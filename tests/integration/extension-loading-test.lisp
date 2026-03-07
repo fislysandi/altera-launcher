@@ -1,0 +1,43 @@
+(in-package #:altera-launcher.tests.integration)
+
+(deftest bootstrap-loads-extension-projects
+  (let* ((root (system-source-directory :altera-launcher))
+         (pattern (namestring (merge-pathnames "extensions/*/*.asd" root)))
+         (runtime (bootstrap :extension-paths (list pattern))))
+    (ok (listp (run-command runtime "extensions.list")))
+    (ok (member "atelier-light" (run-command runtime "ui.theme.presets") :test #'string=))
+    (equal "graphite-dark" (run-command runtime "ui.theme.set" "graphite-dark"))
+    (ok (listp (run-command runtime "ui.renderer.contract")))
+    (equal "spotlight" (run-command runtime "ui.renderer.layout.set" "spotlight"))
+    (ok (listp (run-command runtime "ui.renderer.preview" "open" 1)))
+    (ok (listp (getf (run-command runtime "ui.terminal.state") :results-list)))
+    (ok (listp (getf (run-command runtime "ui.terminal.search" "open") :results-list)))
+    (ok (listp (getf (run-command runtime "ui.terminal.select.next") :selection-animation)))
+    (let ((gui-self-test (run-command runtime "ui.gui.self-test")))
+      (equal t (getf gui-self-test :ok))
+      (equal t (getf gui-self-test :runner-symbol-present)))
+    (let ((window-spec (run-command runtime "ui.gui.window-spec")))
+      (equal nil (getf window-spec :decorated))
+      (equal :center (getf window-spec :window-position))
+      (equal t (getf window-spec :close-on-escape))
+      (equal :middle (getf window-spec :search-box-position)))
+    (let ((manifest-install (run-command runtime "extensions.manifest.install"
+                                         "extensions/extensions-manifest.lisp"
+                                         t)))
+      (equal t (getf manifest-install :dry-run))
+      (ok (member "ui-theme" (getf manifest-install :extensions) :test #'string=)))
+    (ok (>= (length (list-available-commands runtime "ui.gui")) 1))
+    (equal 5 (length (list-available-extensions runtime)))))
+
+(deftest bootstrap-creates-default-user-config-layout
+  (let* ((base (uiop:ensure-directory-pathname
+                (merge-pathnames "altera-config-test/" (uiop:temporary-directory))))
+         (runtime (bootstrap :config-root base))
+         (config-file (merge-pathnames "config.lisp" base))
+         (extensions-dir (merge-pathnames "extensions/" base)))
+    (unwind-protect
+         (progn
+           (ok (probe-file config-file))
+           (ok (probe-file extensions-dir))
+           (equal 0 (length (list-available-extensions runtime))))
+      (ignore-errors (uiop:delete-directory-tree base :validate t)))))
