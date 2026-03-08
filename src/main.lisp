@@ -25,6 +25,7 @@
                  :extension-paths (,(default-extension-pattern config-root))
                  :keymap-profile "vim"
                  :keymap-overrides ()
+                 :theme-preset "atelier-light"
                  :notes "Default Altera Launcher config.")
                :stream stream
                :pretty t)))))

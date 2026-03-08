@@ -65,14 +65,16 @@
         :theme-css-bridge t
         :footer-key-hints t))
 
+(defun resolve-runtime (&optional runtime)
+  (or runtime
+      (funcall (symbol-function (find-symbol "BOOTSTRAP" "ALTERA-LAUNCHER")))))
+
 (defun launch-gui (&optional runtime)
   (ensure-gtk-runtime)
   (ensure-gtk-runner-loaded)
-  (unless runtime
-    (error "UI GTK launch requires runtime argument for unified options pipeline."))
   (funcall (symbol-function
             (find-symbol "RUN-LAUNCHER-WINDOW" "ALTERA-LAUNCHER.EXTENSIONS.UI-GTK.RUNNER"))
-           runtime))
+           (resolve-runtime runtime)))
 
 (define-extension ("ui-gtk"
                    :version "0.1.0"

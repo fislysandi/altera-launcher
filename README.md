@@ -140,6 +140,25 @@ Runtime consumers can query normalized options through:
 (altera-launcher:list-launcher-options *runtime* :query "sync")
 ```
 
+## Declaring Themes in Lisp
+
+Create or extend a theme extension with preset token plists:
+
+```lisp
+(defparameter *theme-presets*
+  '(("my-theme"
+     :palette (:background "#111827" :foreground "#f9fafb" :primary "#22c55e" :accent "#f59e0b")
+     :typography (:ui "Inter" :display "Space Grotesk" :mono "JetBrains Mono")
+     :spacing (:base 4 :scale (:1 4 :2 8 :3 12 :4 16))
+     :motion (:duration-fast 90 :duration-medium 160 :duration-slow 280))))
+```
+
+Then select theme through config:
+
+```lisp
+(:theme-preset "my-theme")
+```
+
 ## Manifest-Based Setup
 
 Use the OCICL manager extension to discover and install dependencies declared by manifest:

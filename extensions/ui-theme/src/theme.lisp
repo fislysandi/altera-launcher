@@ -19,6 +19,24 @@
 
 (defparameter *active-theme* "atelier-light")
 
+(defun launcher-config-file ()
+  (merge-pathnames ".config/altera-launcher/config.lisp" (user-homedir-pathname)))
+
+(defun read-launcher-config ()
+  (let ((path (launcher-config-file)))
+    (if (probe-file path)
+        (with-open-file (stream path :direction :input)
+          (read stream nil '()))
+        '())))
+
+(defun apply-theme-from-config ()
+  (let* ((config (read-launcher-config))
+         (preset (or (getf config :theme-preset)
+                     (getf config :theme)
+                     *active-theme*)))
+    (when (find-theme preset)
+      (setf *active-theme* preset))))
+
 (defun available-theme-presets ()
   (mapcar #'first *theme-presets*))
 
@@ -40,6 +58,8 @@
 (define-extension ("ui-theme"
                    :version "0.1.0"
                    :description "Theme tokens, typography, spacing, and motion settings")
+  (apply-theme-from-config)
+
   (define-command
    "ui.theme.presets"
    (lambda (&rest args)
