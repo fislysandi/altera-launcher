@@ -137,7 +137,8 @@
           (gtk-list-box-insert list-box (make-result-row-widget entry) -1))
         (let ((row (gtk-list-box-get-row-at-index list-box selection-index)))
           (when row
-            (gtk-list-box-select-row list-box row))))))
+            (gtk-list-box-select-row list-box row)))))
+  (gtk-widget-show-all list-box))
 
 (defun selected-option (options selection-index)
   (nth (bounded-index selection-index (length options)) options))
