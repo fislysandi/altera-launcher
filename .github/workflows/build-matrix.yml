@@ -76,10 +76,12 @@ jobs:
           Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression
           scoop install sbcl git
           git clone https://github.com/ocicl/ocicl.git "$env:TEMP\ocicl"
-          Push-Location "$env:TEMP\ocicl"
-          sbcl --non-interactive --load setup.lisp
-          Pop-Location
-          "$env:USERPROFILE\.local\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          $env:OCICL_REPO_DIR = "$env:TEMP\ocicl"
+          $env:OCICL_EXE_PATH_FILE = "$env:RUNNER_TEMP\ocicl-exe.txt"
+          sbcl --non-interactive --script scripts/bootstrap-ocicl-windows.lisp
+          $ociclExe = (Get-Content "$env:RUNNER_TEMP\ocicl-exe.txt" -Raw).Trim()
+          "OCICL_EXE=$ociclExe" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          (Split-Path -Parent $ociclExe) | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
       - name: Build artifact (Linux/macOS)
         if: runner.os != 'Windows'
@@ -94,7 +96,7 @@ jobs:
         run: |
           New-Item -ItemType Directory -Path dist -Force | Out-Null
           $env:OCICL_LOCAL_ONLY = "1"
-          & "$env:USERPROFILE\.local\bin\ocicl.exe" install
+          & "$env:OCICL_EXE" install
           sbcl --script scripts/build-release-image.lisp
 
       - name: Upload artifact
