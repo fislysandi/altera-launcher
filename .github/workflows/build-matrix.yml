@@ -16,6 +16,16 @@ jobs:
       - name: Install SBCL
         run: sudo apt-get update && sudo apt-get install -y sbcl
 
+      - name: Install OCICL
+        shell: bash
+        run: |
+          git clone https://github.com/ocicl/ocicl.git "$RUNNER_TEMP/ocicl"
+          sbcl --non-interactive --load "$RUNNER_TEMP/ocicl/setup.lisp"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Install test dependencies
+        run: OCICL_LOCAL_ONLY=1 ocicl install
+
       - name: Run tests
         run: sbcl --non-interactive --eval '(require :asdf)' --eval '(asdf:load-asd "${{ github.workspace }}/altera-launcher.asd")' --eval '(asdf:test-system :altera-launcher/tests)'
 
