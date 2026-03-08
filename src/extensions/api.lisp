@@ -82,6 +82,7 @@
         :title (or (getf item :title) "")
         :subtitle (or (getf item :subtitle) "")
         :kind (or (getf item :kind) :command)
+        :icon (getf item :icon)
         :command (getf item :command)
         :args (or (getf item :args) '())
         :source (getf source :id)
