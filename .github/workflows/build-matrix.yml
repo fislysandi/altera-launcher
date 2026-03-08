@@ -76,6 +76,7 @@ jobs:
           Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression
           scoop install sbcl git
           git clone https://github.com/ocicl/ocicl.git "$env:TEMP\ocicl"
+          $env:UserProfile = $env:USERPROFILE
           $env:OCICL_REPO_DIR = "$env:TEMP\ocicl"
           sbcl --non-interactive --script scripts/bootstrap-ocicl-windows.lisp
           if ($LASTEXITCODE -ne 0) { throw "OCICL bootstrap script failed" }
