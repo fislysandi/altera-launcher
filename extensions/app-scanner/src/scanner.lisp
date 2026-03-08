@@ -59,14 +59,23 @@
             do (setf (gethash id seen) t)
                and collect app)))
 
+(defun dedupe-apps-by-title (apps)
+  (let ((seen (make-hash-table :test #'equal)))
+    (loop for app in apps
+          for title = (string-downcase (or (getf app :title) ""))
+          unless (gethash title seen)
+            do (setf (gethash title seen) t)
+               and collect app)))
+
 (defun sort-apps (apps)
   (sort apps #'string< :key (lambda (app) (string-downcase (getf app :title)))))
 
 (defun refresh-app-index ()
   (setf *app-index*
         (sort-apps
-         (dedupe-apps-by-id
-          (remove nil (mapcar #'parse-desktop-entry (desktop-entry-paths)))))))
+         (dedupe-apps-by-title
+          (dedupe-apps-by-id
+           (remove nil (mapcar #'parse-desktop-entry (desktop-entry-paths))))))))
 
 (defun ensure-app-index ()
   (unless *app-index*

@@ -296,6 +296,7 @@
 
   (define-options-source "ui.terminal.options" (query)
     (loop for entry in (filtered-results query)
+          when (not (eq (getf entry :kind) :application))
           collect (list :id (getf entry :id)
                         :title (getf entry :title)
                         :subtitle (getf entry :subtitle)
