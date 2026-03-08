@@ -4,6 +4,16 @@
 
 `altera-launcher` keeps the core minimal and stable while delivering user-facing behavior through extensions.
 
+## Design North Star
+
+Altera must stay easy to change at any point in the project lifecycle.
+
+- Prefer config + extension contracts over hardcoded behavior.
+- Keep toolkit adapters thin; they render normalized option data instead of owning product logic.
+- Keep business actions command-driven so UI/toolkit swaps do not require feature rewrites.
+- Prefer runtime-reloadable configuration and keymaps where feasible.
+- Treat hardcoded strings, lists, and behavior branches in toolkit code as temporary and reduce them over time.
+
 ## Minimal Core Boundaries
 
 Core modules only include:
@@ -44,8 +54,8 @@ Default user bootstrap writes config at `~/.config/altera-launcher/config.lisp` 
 
 - `ui-theme` extension owns visual tokens (palette, typography, spacing, motion).
 - `ui-renderer` extension owns renderer surface contract and layout hooks.
-- `ui-terminal` extension composes theme + renderer contracts into a terminal launcher state model.
-- `ui-gtk` extension renders a desktop GUI window and consumes terminal/theme/renderer state contracts.
+- `ui-terminal` extension provides launcher options and command execution adapters for toolkit consumers.
+- `ui-gtk` extension renders a desktop GUI window and consumes normalized options via `list-launcher-options`.
 - Core stays UI-agnostic; future frontends can consume these contracts without changing core modules.
 
 ## Error Model

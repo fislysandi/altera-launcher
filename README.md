@@ -29,6 +29,7 @@ Minimal, extension-first launcher written in Common Lisp.
 - `start.lisp` - one-command bootstrap helper
 - `tests/` - rove test suites
 - `docs/architecture.md` - architecture and contracts
+- `docs/anti-hardcode-checklist.md` - contribution checklist for futureproof changes
 - `docs/pattern-adaptation-plan.md` - selected source patterns to adapt
 - `docs/pattern-attribution.md` - attribution for adapted ideas
 

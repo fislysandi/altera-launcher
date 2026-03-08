@@ -8,6 +8,8 @@ General project goals and progress checklist.
 - [x] Use extension-first design for all feature behavior
 - [x] Support extension projects as independent ASDF systems
 - [x] Add duplicate/unknown command error conditions
+- [x] Adopt change-on-the-fly north star (config and extension contracts first)
+- [ ] Remove remaining toolkit-level hardcoded labels/strings from UI adapters
 - [ ] Add extension API versioning and compatibility policy
 - [x] Add toolkit-agnostic options source API (`define-options-source`)
 - [ ] Add safe extension sandbox boundaries and timeout controls
@@ -70,6 +72,7 @@ General project goals and progress checklist.
 - [ ] Add startup diagnostics log file in user config dir
 - [ ] Add extension load timing and failure diagnostics
 - [ ] Add snapshot tests for UI state contracts
+- [ ] Add anti-hardcode review checklist to CI/release gates
 - [ ] Add CI workflow for load/test/lint checks
 
 ## Packaging & Distribution
