@@ -34,6 +34,7 @@ Minimal, extension-first launcher written in Common Lisp.
 - `CONTRIBUTING.md` - contribution rules and PR checklist
 - `docs/contributor-guide.md` - contributor onboarding workflow
 - `docs/extension-authoring-guide.md` - extension implementation guide
+- `docs/contracts/options-source-v1.md` - strict options-source item contract and diagnostics
 - `docs/troubleshooting.md` - common setup/runtime issues and fixes
 - `docs/hackability-improvements.md` - source-level improvement proposals for contributors
 - `docs/pattern-adaptation-plan.md` - selected source patterns to adapt
@@ -50,6 +51,17 @@ Keymap defaults in `config.lisp`:
 
 - `:keymap-profile "vim"` (default)
 - `:keymap-overrides ()` for custom chord-to-action mappings
+
+Extension loading controls in `config.lisp`:
+
+- `:enabled-extensions ()` to allowlist extension system names
+- `:disabled-extensions ()` to blocklist extension system names
+- `:extensions-auto-reload nil` to reload extension state before each runtime call
+
+If `:enabled-extensions` is non-empty, only listed extensions are loaded.
+Entries in `:disabled-extensions` are always skipped.
+When `:extensions-auto-reload` is `t`, launcher commands and option queries rebuild extension state automatically for rapid debugging.
+When auto reload is `nil`, you can trigger reload manually with `extensions.reload`.
 
 This keeps user-installed extensions separate from repo-local development extensions.
 
@@ -79,6 +91,10 @@ OCICL_LOCAL_ONLY=1 ocicl install
 ```lisp
 (defparameter *runtime* (altera-launcher:bootstrap))
 (altera-launcher:run-command *runtime* "extensions.list")
+(altera-launcher:run-command *runtime* "extensions.index")
+(altera-launcher:run-command *runtime* "extensions.contract.validate")
+(altera-launcher:run-command *runtime* "extensions.enable" "ui-gtk")
+(altera-launcher:run-command *runtime* "extensions.disable" "ui-terminal")
 (altera-launcher:run-command *runtime* "ui.theme.presets")
 (altera-launcher:run-command *runtime* "ui.renderer.contract")
 (altera-launcher:run-command *runtime* "ui.terminal.search" "open")
@@ -97,6 +113,39 @@ Or via ASDF:
 (asdf:load-asd "./altera-launcher.asd")
 (asdf:test-system :altera-launcher/tests)
 ```
+
+## Build Artifacts
+
+Build a platform artifact on the current machine:
+
+```bash
+OCICL_LOCAL_ONLY=1 ocicl install
+sbcl --script scripts/build-release-image.lisp
+```
+
+Override output name/path:
+
+```bash
+ALTERA_BUILD_OUTPUT="$(pwd)/dist/altera-launcher-custom" sbcl --script scripts/build-release-image.lisp
+```
+
+CI matrix build and artifact upload are defined in:
+
+- `.github/workflows/build-matrix.yml`
+
+Windows CI uses Scoop to install SBCL and bootstrap OCICL before build.
+
+## Release Automation
+
+Use GitHub Actions workflow dispatch to create a release and attach Linux/macOS/Windows artifacts:
+
+- `.github/workflows/release.yml`
+
+Required workflow inputs:
+
+- `tag` (for example `v0.1.0`)
+- `name` (release title)
+- `prerelease` (`true` or `false`)
 
 ## Writing Extensions
 
@@ -147,9 +196,13 @@ Runtime consumers can query normalized options through:
 
 ## Declaring Themes in Lisp
 
-Each theme lives in its own folder under:
+Each theme lives in its own folder under either user config or bundled themes:
+
+- `~/.config/altera-launcher/themes/<theme-name>/theme.lisp` (user override path)
 
 - `extensions/ui-theme/themes/<theme-name>/theme.lisp`
+
+If a theme name exists in both locations, the user config theme is loaded first and wins.
 
 Declare the theme in that file:
 

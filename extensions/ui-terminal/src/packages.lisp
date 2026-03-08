@@ -1,8 +1,8 @@
 (defpackage #:altera-launcher.extensions.ui-terminal
   (:use #:cl #:altera-launcher.extensions.api)
-  (:import-from #:uiop
-                #:read-file-lines
-                #:launch-program)
+  (:import-from #:altera-launcher.core.desktop-apps
+                #:discover-desktop-apps
+                #:launch-desktop-app-entry)
   (:import-from #:altera-launcher.extensions.ui-theme
                 #:active-theme-name
                 #:active-theme-tokens)

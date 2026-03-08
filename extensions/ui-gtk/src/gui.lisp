@@ -41,8 +41,14 @@
 (defun ensure-gtk-runner-loaded ()
   "Load GTK runner implementation file containing run-launcher-window."
   (let ((runner-file (merge-pathnames "src/gtk-runner.lisp"
-                                      (asdf:system-source-directory :ui-gtk))))
+                                       (asdf:system-source-directory :ui-gtk))))
     (load runner-file)))
+
+(defun run-launcher-window-dispatch (runtime)
+  "Dispatch launcher window run call to GTK runner implementation."
+  (declare (ignore runtime))
+  (error 'gtk-runtime-missing-error
+         :message "GTK runner implementation is not loaded."))
 
 (defun gui-preflight-report ()
   "Return diagnostic plist for GTK runtime, display, and runner availability."
@@ -53,9 +59,7 @@
         (list :ok t
               :gtk-package-present (not (null (find-package "GTK")))
               :display-available (not (null (display-available-p)))
-              :runner-symbol-present
-              (not (null (find-symbol "RUN-LAUNCHER-WINDOW"
-                                      "ALTERA-LAUNCHER.EXTENSIONS.UI-GTK.RUNNER")))))
+              :runner-symbol-present (fboundp 'run-launcher-window-dispatch)))
     (error (condition)
       (list :ok nil
             :error (princ-to-string condition)
@@ -76,15 +80,13 @@
 (defun resolve-runtime (&optional runtime)
   "Return provided RUNTIME or bootstrap a fresh launcher runtime."
   (or runtime
-      (funcall (symbol-function (find-symbol "BOOTSTRAP" "ALTERA-LAUNCHER")))))
+      (bootstrap)))
 
 (defun launch-gui (&optional runtime)
   "Launch GTK window using optional RUNTIME and return runner result."
   (ensure-gtk-runtime)
   (ensure-gtk-runner-loaded)
-  (funcall (symbol-function
-            (find-symbol "RUN-LAUNCHER-WINDOW" "ALTERA-LAUNCHER.EXTENSIONS.UI-GTK.RUNNER"))
-           (resolve-runtime runtime)))
+  (run-launcher-window-dispatch (resolve-runtime runtime)))
 
 (define-extension ("ui-gtk"
                    :version "0.1.0"

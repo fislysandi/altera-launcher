@@ -10,6 +10,9 @@
                (:file "src/core/extension-loader")
                (:file "src/core/dispatcher")
                (:file "src/core/query")
+               (:file "src/core/config")
+               (:file "src/core/keymap-overrides")
+               (:file "src/core/desktop-apps")
                (:file "src/extensions/api")
                (:file "src/main")))
 
@@ -22,6 +25,8 @@
                (:file "tests/core/extension-loader-test")
                (:file "tests/core/dispatcher-test")
                (:file "tests/core/query-test")
+               (:file "tests/core/options-api-test")
+               (:file "tests/core/keymap-overrides-test")
                (:file "tests/integration/extension-loading-test")
                (:file "tests/main"))
   :perform (asdf:test-op (op component)

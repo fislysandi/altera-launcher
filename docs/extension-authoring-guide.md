@@ -66,6 +66,10 @@ Recommended fields:
 - `:args` list of arguments for dispatcher
 - `:icon` icon hint/path when relevant
 
+For strict rules and diagnostics behavior, see:
+
+- `docs/contracts/options-source-v1.md`
+
 ## Manifest Integration
 
 Add extension metadata to:

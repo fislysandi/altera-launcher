@@ -37,9 +37,20 @@
                 #:make-command-registry
                 #:make-command-spec
                 #:register-command)
-  (:import-from #:altera-launcher.core.query
-                #:search-commands
-                #:commands-for-extension))
+   (:import-from #:altera-launcher.core.query
+                 #:search-commands
+                 #:commands-for-extension))
+
+(defpackage #:altera-launcher.tests.options-api
+  (:use #:cl #:rove)
+  (:import-from #:altera-launcher.extensions.api
+                #:collect-option-report))
+
+(defpackage #:altera-launcher.tests.keymap-overrides
+  (:use #:cl #:rove)
+  (:import-from #:altera-launcher.core.keymap-overrides
+                #:parse-override-entry
+                #:normalize-override-entries))
 
 (defpackage #:altera-launcher.tests.integration
   (:use #:cl #:rove)
@@ -48,7 +59,12 @@
                 #:run-command
                 #:list-available-commands
                 #:list-available-extensions
-                #:list-launcher-options)
+                #:list-launcher-options
+                #:list-extension-contract-report)
+  (:import-from #:altera-launcher.core.dispatcher
+                #:unknown-command-error)
+  (:import-from #:altera-launcher.core.config
+                #:read-launcher-config-plist)
   (:import-from #:asdf
                 #:system-source-directory))
 

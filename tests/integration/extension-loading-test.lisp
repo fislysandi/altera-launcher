@@ -22,10 +22,22 @@
     (equal :open-command-actions (run-command runtime "keymap.bindings.resolve" "ctrl+b"))
     (equal :move-next (run-command runtime "keymap.bindings.resolve" "j"))
     (equal "emacs" (run-command runtime "keymap.profile.set" "emacs"))
-    (equal :move-next (run-command runtime "keymap.bindings.resolve" "ctrl+n"))
-    (let ((options (list-launcher-options runtime :query "sync")))
-      (ok (plusp (length options)))
-      (ok (some (lambda (item)
+     (equal :move-next (run-command runtime "keymap.bindings.resolve" "ctrl+n"))
+     (let ((contract-report (run-command runtime "extensions.contract.validate")))
+       (ok (listp contract-report))
+       (ok (integerp (getf contract-report :extensions-count)))
+       (ok (integerp (getf contract-report :commands-count)))
+       (ok (integerp (getf contract-report :option-sources-count)))
+       (ok (listp (getf contract-report :provider-errors)))
+       (ok (listp (getf contract-report :warnings))))
+     (let ((contract-report (list-extension-contract-report runtime)))
+       (ok (listp contract-report))
+       (ok (eq (getf contract-report :ok)
+               (null (append (getf contract-report :provider-errors)
+                             (getf contract-report :warnings))))))
+     (let ((options (list-launcher-options runtime :query "sync")))
+       (ok (plusp (length options)))
+       (ok (some (lambda (item)
                   (string= (getf item :source) "ocicl.manager.options"))
                 options)))
     (let* ((all-ocicl-options
@@ -62,6 +74,74 @@
     (unwind-protect
          (progn
            (ok (probe-file config-file))
-           (ok (probe-file extensions-dir))
-           (equal 0 (length (list-available-extensions runtime))))
+            (ok (probe-file extensions-dir))
+            (equal 0 (length (list-available-extensions runtime))))
       (ignore-errors (uiop:delete-directory-tree base :validate t)))))
+
+(deftest bootstrap-respects-enabled-disabled-extension-config
+  (let* ((base (uiop:ensure-directory-pathname
+                (merge-pathnames "altera-config-filter-test/" (uiop:temporary-directory))))
+         (root (system-source-directory :altera-launcher))
+         (pattern (namestring (merge-pathnames "extensions/*/*.asd" root)))
+         (config-file (merge-pathnames "config.lisp" base)))
+    (unwind-protect
+         (progn
+           (uiop:ensure-all-directories-exist (list (merge-pathnames "extensions/" base)))
+           (with-open-file (stream config-file
+                                   :direction :output
+                                   :if-exists :supersede
+                                   :if-does-not-exist :create)
+             (write `(:version "1"
+                      :extension-paths (,pattern)
+                      :enabled-extensions ()
+                      :disabled-extensions ("ui-theme")
+                      :extensions-auto-reload t)
+                    :stream stream
+                    :pretty t))
+           (let ((runtime (bootstrap :config-root base)))
+             (equal t (getf runtime :extensions-auto-reload))
+             (ok (signals (run-command runtime "ui.theme.presets") 'unknown-command-error))
+             (ok (listp (run-command runtime "extensions.index")))
+             (ok (getf (run-command runtime "extensions.enable" "ui-theme") :ok))
+             (ok (member "ui-theme"
+                         (getf (read-launcher-config-plist config-file) :enabled-extensions)
+                         :test #'string=))
+             (ok (getf (run-command runtime "extensions.disable" "ui-renderer") :ok))
+             (ok (member "ui-renderer"
+                         (getf (read-launcher-config-plist config-file) :disabled-extensions)
+                         :test #'string=))))
+      (ignore-errors (uiop:delete-directory-tree base :validate t)))))
+
+(deftest extensions-reload-applies-config-when-auto-reload-off
+  (let* ((base (uiop:ensure-directory-pathname
+                (merge-pathnames "altera-config-reload-test/" (uiop:temporary-directory))))
+         (root (system-source-directory :altera-launcher))
+         (pattern (namestring (merge-pathnames "extensions/*/*.asd" root)))
+         (config-file (merge-pathnames "config.lisp" base)))
+    (unwind-protect
+         (progn
+           (uiop:ensure-all-directories-exist (list (merge-pathnames "extensions/" base)))
+           (with-open-file (stream config-file
+                                   :direction :output
+                                   :if-exists :supersede
+                                   :if-does-not-exist :create)
+             (write `(:version "1"
+                      :extension-paths (,pattern)
+                      :enabled-extensions ()
+                      :disabled-extensions ("ui-theme")
+                      :extensions-auto-reload nil)
+                    :stream stream
+                    :pretty t))
+            (let ((runtime (bootstrap :config-root base)))
+              (ok (null (getf runtime :extensions-auto-reload)))
+              (ok (signals (run-command runtime "ui.theme.presets") 'unknown-command-error))
+              (ok (getf (run-command runtime "extensions.enable" "ui-theme") :ok))
+              (ok (signals (run-command runtime "ui.theme.presets") 'unknown-command-error))
+              (let ((reload (run-command runtime "extensions.reload" "ui-theme")))
+                (ok (getf reload :ok))
+                (ok (member (getf reload :mode) '(:forced :soft)))
+                (if (eq (getf reload :mode) :forced)
+                    (ok (listp (run-command runtime "ui.theme.presets")))
+                    (ok (signals (run-command runtime "ui.theme.presets")
+                                 'unknown-command-error))))))
+       (ignore-errors (uiop:delete-directory-tree base :validate t)))))

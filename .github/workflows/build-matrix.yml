@@ -1,0 +1,80 @@
+name: Build Matrix
+
+on:
+  push:
+    branches: ["master"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install SBCL
+        run: sudo apt-get update && sudo apt-get install -y sbcl
+
+      - name: Run tests
+        run: sbcl --non-interactive --eval '(require :asdf)' --eval '(asdf:load-asd "${{ github.workspace }}/altera-launcher.asd")' --eval '(asdf:test-system :altera-launcher/tests)'
+
+  build:
+    needs: test
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install SBCL (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y sbcl
+
+      - name: Install SBCL (macOS)
+        if: runner.os == 'macOS'
+        run: brew install sbcl
+
+      - name: Install OCICL (Linux/macOS)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          git clone https://github.com/ocicl/ocicl.git "$RUNNER_TEMP/ocicl"
+          sbcl --non-interactive --load "$RUNNER_TEMP/ocicl/setup.lisp"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Install SBCL (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
+          Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression
+          scoop install sbcl git
+          git clone https://github.com/ocicl/ocicl.git "$env:TEMP\ocicl"
+          sbcl --non-interactive --load "$env:TEMP\ocicl\setup.lisp"
+          "$env:USERPROFILE\AppData\Local\ocicl" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Build artifact (Linux/macOS)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          OCICL_LOCAL_ONLY=1 ocicl install
+          sbcl --script scripts/build-release-image.lisp
+
+      - name: Build artifact (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path dist -Force | Out-Null
+          $env:OCICL_LOCAL_ONLY = "1"
+          ocicl install
+          sbcl --script scripts/build-release-image.lisp
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: altera-launcher-${{ runner.os }}-${{ runner.arch }}
+          path: dist/*

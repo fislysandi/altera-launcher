@@ -25,10 +25,24 @@
   "Return root directory containing bundled theme definition files."
   (merge-pathnames "themes/" (asdf:system-source-directory :ui-theme)))
 
+(defun user-themes-root-directory ()
+  "Return root directory containing user theme definition files."
+  (merge-pathnames "themes/" (launcher-config-root)))
+
+(defun discover-theme-files-in-directory (root-directory)
+  "Return sorted theme definition file namestrings in ROOT-DIRECTORY."
+  (if (probe-file root-directory)
+      (sort (mapcar #'namestring
+                    (directory (merge-pathnames "*/*.lisp" root-directory)))
+            #'string<)
+      '()))
+
 (defun discover-theme-files ()
-  "Return sorted list of theme definition file namestrings."
-  (sort (mapcar #'namestring (directory (merge-pathnames "*/*.lisp" (themes-root-directory))))
-        #'string<))
+  "Return sorted list of user and bundled theme definition files.
+
+User theme files are loaded first and can override bundled themes by name."
+  (append (discover-theme-files-in-directory (user-themes-root-directory))
+          (discover-theme-files-in-directory (themes-root-directory))))
 
 (defun load-theme-files ()
   "Reload all bundled theme files and repopulate preset registry."
@@ -42,17 +56,9 @@
   (unless *themes-loaded-p*
     (load-theme-files)))
 
-(defun launcher-config-file ()
-  "Return default launcher config file pathname used for theme selection."
-  (merge-pathnames ".config/altera-launcher/config.lisp" (user-homedir-pathname)))
-
 (defun read-launcher-config ()
   "Read launcher config plist for theme extension, or empty plist if missing."
-  (let ((path (launcher-config-file)))
-    (if (probe-file path)
-        (with-open-file (stream path :direction :input)
-          (read stream nil '()))
-        '())))
+  (read-launcher-config-plist))
 
 (defun apply-theme-from-config ()
   "Apply configured theme preset from user config when available."

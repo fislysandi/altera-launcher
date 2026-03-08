@@ -20,12 +20,14 @@
   (:export #:duplicate-extension-error
             #:extension-spec
             #:make-extension-spec
-           #:extension-spec-name
-           #:extension-spec-version
-            #:extension-spec-description
-            #:make-extension-loader
-            #:discover-extension-systems
-            #:register-extension
+             #:extension-spec-name
+            #:extension-spec-version
+             #:extension-spec-description
+             #:extension-spec-author
+             #:extension-spec-homepage
+             #:make-extension-loader
+             #:discover-extension-systems
+             #:register-extension
             #:find-extension
             #:list-extensions))
 
@@ -45,6 +47,29 @@
   (:export #:search-commands
            #:commands-for-extension))
 
+(defpackage #:altera-launcher.core.config
+  (:use #:cl)
+  (:export #:launcher-config-root
+           #:launcher-config-file
+           #:read-launcher-config-plist
+           #:write-launcher-config-plist))
+
+(defpackage #:altera-launcher.core.keymap-overrides
+  (:use #:cl)
+  (:export #:normalize-chord
+           #:normalize-action
+           #:parse-override-entry
+           #:normalize-override-entries))
+
+(defpackage #:altera-launcher.core.desktop-apps
+  (:use #:cl)
+  (:import-from #:uiop
+                #:read-file-lines
+                #:launch-program
+                #:split-string)
+  (:export #:discover-desktop-apps
+           #:launch-desktop-app-entry))
+
 (defpackage #:altera-launcher.extensions.api
   (:use #:cl)
   (:import-from #:altera-launcher.core.command-registry
@@ -59,7 +84,8 @@
            #:define-extension
            #:define-command
            #:define-options-source
-           #:collect-option-items))
+           #:collect-option-items
+           #:collect-option-report))
 
 (defpackage #:altera-launcher
   (:use #:cl)
@@ -77,9 +103,12 @@
                 #:*active-loader*
                 #:*active-registry*
                 #:*active-option-sources*
-                #:collect-option-items)
+                #:collect-option-items
+                #:collect-option-report)
   (:export #:bootstrap
-           #:run-command
-           #:list-available-commands
-           #:list-available-extensions
-           #:list-launcher-options))
+            #:run-command
+            #:list-available-commands
+            #:list-available-extensions
+            #:list-launcher-options
+            #:list-launcher-option-report
+            #:list-extension-contract-report))

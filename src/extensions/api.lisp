@@ -29,14 +29,16 @@ Signals EXTENSION-CONTEXT-ERROR when called outside extension load context."
   "Normalize NAME to canonical lowercase identifier string."
   (string-downcase (string name)))
 
-(defun register-extension-definition (name &key version description)
+(defun register-extension-definition (name &key version description author homepage)
   "Register extension metadata for NAME in the active loader context."
   (ensure-bootstrap-context)
   (register-extension
    *active-loader*
    (make-extension-spec :name (normalize-id name)
                         :version version
-                        :description description)))
+                        :description description
+                        :author author
+                        :homepage homepage)))
 
 (defun define-command (name handler &key title description tags)
   "Register a command in the active registry under the active extension context."
@@ -127,6 +129,16 @@ BODY should return one option plist or a list of option plists."
                     (option-match-p normalized query))
             collect normalized)))
 
+(defun provider-option-report (source query context)
+  "Return provider result items and optional error metadata for SOURCE."
+  (handler-case
+      (values (provider-option-items source query context) nil)
+    (error (condition)
+      (values '()
+              (list :source (getf source :id)
+                    :extension (getf source :extension)
+                    :error (princ-to-string condition))))))
+
 (defun dedupe-option-items (items)
   "Remove duplicate option items from ITEMS by normalized :ID."
   (let ((seen (make-hash-table :test #'equal)))
@@ -151,25 +163,45 @@ BODY should return one option plist or a list of option plists."
 
 Aggregates provider results, applies validation/filtering, deduplicates by id,
 sorts output for stable UI consumption, and optionally applies LIMIT."
-  (let* ((normalized-source-id (and source-id (normalize-id source-id)))
-         (collected
-           (loop for source being the hash-values of option-sources
-                 when (or (null normalized-source-id)
-                          (string= normalized-source-id (getf source :id)))
-                    append
-                    (handler-case
-                        (provider-option-items source query context)
-                      (error () '()))))
-         (stable-items (sort-option-items (dedupe-option-items collected))))
-    (if limit
-        (subseq stable-items 0 (min limit (length stable-items)))
-        stable-items)))
+  (let* ((report (collect-option-report option-sources
+                                        :query query
+                                        :source-id source-id
+                                        :limit limit
+                                        :context context))
+         (stable-items (getf report :items)))
+    stable-items))
 
-(defmacro define-extension ((name &key (version "0.1.0") description) &body body)
+(defun collect-option-report (option-sources &key (query "") source-id limit context)
+  "Return launcher options and provider diagnostics from OPTION-SOURCES.
+
+The returned plist has keys :ITEMS and :ERRORS."
+  (let ((normalized-source-id (and source-id (normalize-id source-id)))
+        (collected '())
+        (errors '()))
+    (maphash
+     (lambda (_ source)
+       (declare (ignore _))
+       (when (or (null normalized-source-id)
+                 (string= normalized-source-id (getf source :id)))
+         (multiple-value-bind (items item-error)
+             (provider-option-report source query context)
+           (setf collected (nconc collected items))
+           (when item-error
+             (push item-error errors)))))
+     option-sources)
+    (let ((stable-items (sort-option-items (dedupe-option-items collected))))
+      (list :items (if limit
+                       (subseq stable-items 0 (min limit (length stable-items)))
+                       stable-items)
+            :errors (nreverse errors)))))
+
+(defmacro define-extension ((name &key (version "0.1.0") description author homepage) &body body)
   "Register extension metadata and evaluate BODY in active extension scope."
   `(progn
      (register-extension-definition ,name
                                     :version ,version
-                                    :description ,description)
+                                    :description ,description
+                                    :author ,author
+                                    :homepage ,homepage)
      (let ((*active-extension* (normalize-id ,name)))
-       ,@body)))
+        ,@body)))

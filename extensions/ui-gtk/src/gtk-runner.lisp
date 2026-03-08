@@ -220,128 +220,192 @@
             (list :ok nil :error (princ-to-string condition) :title (getf option :title))))
         (list :ok nil :error "Selected option has no command"))))
 
+(defun make-launcher-widgets ()
+  "Create and return launcher GTK widgets as a plist."
+  (list :window (make-instance 'gtk-window :type :toplevel :title "Altera Launcher - GTK" :default-width 960 :default-height 520)
+        :root (make-instance 'gtk-vbox :homogeneous nil :spacing 10 :border-width 14)
+        :top-spacer (make-instance 'gtk-label :label "")
+        :search-row (make-instance 'gtk-hbox :homogeneous nil :spacing 12)
+        :search-entry (make-instance 'gtk-entry :text "")
+        :content-row (make-instance 'gtk-hbox :homogeneous t :spacing 10)
+        :results-scroller (make-instance 'gtk-scrolled-window)
+        :results-listbox (make-instance 'gtk-list-box)
+        :preview-label (gtk-label-new "")
+        :bottom-spacer (make-instance 'gtk-label :label "")
+        :status-label (gtk-label-new "")
+        :footer-label (gtk-label-new "")))
+
+(defun make-launcher-state (runtime)
+  "Create and return mutable launcher state plist for RUNTIME."
+  (list :query ""
+        :options (fetch-options runtime "")
+        :selection-index 0))
+
+(defun refresh-launcher-view (state widgets)
+  "Refresh launcher list, preview, and status widgets from STATE."
+  (let* ((options (getf state :options))
+         (selection-index (bounded-index (getf state :selection-index) (length options)))
+         (query (getf state :query))
+         (results-listbox (getf widgets :results-listbox))
+         (preview-label (getf widgets :preview-label))
+         (status-label (getf widgets :status-label)))
+    (setf (getf state :selection-index) selection-index)
+    (refresh-results-listbox options selection-index results-listbox)
+    (gtk-label-set-text preview-label
+                        (format-preview-pane (selected-option options selection-index)
+                                             query
+                                             selection-index))
+    (gtk-label-set-text status-label (format-status-rail options selection-index))))
+
+(defun refresh-from-query (state widgets runtime next-query)
+  "Refresh launcher STATE and WIDGETS after NEXT-QUERY update."
+  (setf (getf state :query) next-query
+        (getf state :options) (fetch-options runtime next-query)
+        (getf state :selection-index) 0)
+  (refresh-launcher-view state widgets))
+
+(defun move-selection (state widgets delta)
+  "Move launcher selection in STATE by DELTA and refresh WIDGETS."
+  (let* ((options (getf state :options))
+         (results-listbox (getf widgets :results-listbox))
+         (next-index (bounded-index (+ (getf state :selection-index) delta)
+                                    (length options))))
+    (setf (getf state :selection-index) next-index)
+    (let ((row (gtk-list-box-get-row-at-index results-listbox next-index)))
+      (when row
+        (gtk-list-box-select-row results-listbox row)))
+    (refresh-launcher-view state widgets)))
+
+(defun apply-key-action (state widgets runtime action)
+  "Apply key ACTION to launcher STATE, update WIDGETS, and return handled flag."
+  (let ((search-entry (getf widgets :search-entry))
+        (status-label (getf widgets :status-label)))
+    (case action
+      (:close-launcher (leave-gtk-main) t)
+      (:move-next (move-selection state widgets 1) t)
+      (:move-prev (move-selection state widgets -1) t)
+      (:move-top
+       (setf (getf state :selection-index) 0)
+       (refresh-launcher-view state widgets)
+       t)
+      (:move-bottom
+       (setf (getf state :selection-index)
+             (if (getf state :options) (1- (length (getf state :options))) 0))
+       (refresh-launcher-view state widgets)
+       t)
+      (:focus-search (gtk-widget-grab-focus search-entry) t)
+      (:execute-selected
+       (let* ((options (getf state :options))
+              (selection-index (getf state :selection-index))
+              (selected (selected-option options selection-index))
+              (result (execute-selected-option runtime options selection-index)))
+         (gtk-label-set-text status-label
+                             (if (getf result :ok)
+                                 (format nil "Executed: ~A" (or (getf result :title) "item"))
+                                 (format nil "Execution failed: ~A" (or (getf result :error) "unknown"))))
+         (when (and (getf result :ok)
+                    (eq (getf selected :kind) :application))
+           (leave-gtk-main)))
+       t)
+      (:open-command-actions
+       (gtk-label-set-text status-label "Actions panel is not implemented yet.")
+       t)
+      (otherwise nil))))
+
+(defun connect-launcher-signals (state widgets runtime)
+  "Connect GTK signal handlers for launcher STATE, WIDGETS, and RUNTIME."
+  (let ((window (getf widgets :window))
+        (search-entry (getf widgets :search-entry))
+        (results-listbox (getf widgets :results-listbox))
+        (preview-label (getf widgets :preview-label))
+        (status-label (getf widgets :status-label)))
+    (flet ((handle-key-event (event)
+             (let* ((chord (key-event->chord event))
+                    (action (and chord (resolve-key-action chord (current-keymap-profile)))))
+               (and action (apply-key-action state widgets runtime action)))))
+      (g-signal-connect window "destroy"
+                        (lambda (widget)
+                          (declare (ignore widget))
+                          (leave-gtk-main)))
+
+      (g-signal-connect window "key-press-event"
+                        (lambda (widget event)
+                          (declare (ignore widget))
+                          (handle-key-event event)))
+
+      (g-signal-connect search-entry "key-press-event"
+                        (lambda (widget event)
+                          (declare (ignore widget))
+                          (handle-key-event event)))
+
+      (g-signal-connect search-entry "changed"
+                        (lambda (widget)
+                          (declare (ignore widget))
+                          (refresh-from-query state widgets runtime (gtk-entry-text search-entry))))
+
+      (g-signal-connect results-listbox "row-selected"
+                        (lambda (widget row)
+                          (declare (ignore widget))
+                          (when row
+                            (setf (getf state :selection-index) (gtk-list-box-row-get-index row))
+                            (gtk-label-set-text preview-label
+                                                (format-preview-pane (selected-option (getf state :options)
+                                                                                      (getf state :selection-index))
+                                                                     (getf state :query)
+                                                                     (getf state :selection-index)))
+                            (gtk-label-set-text status-label
+                                                (format-status-rail (getf state :options)
+                                                                    (getf state :selection-index))))))
+
+      (g-signal-connect results-listbox "row-activated"
+                        (lambda (widget row)
+                          (declare (ignore widget))
+                          (when row
+                            (setf (getf state :selection-index) (gtk-list-box-row-get-index row)))
+                          (apply-key-action state widgets runtime :execute-selected))))))
+
+(defun build-launcher-layout (widgets)
+  "Build and show launcher widget layout from WIDGETS."
+  (let ((window (getf widgets :window))
+        (root (getf widgets :root))
+        (top-spacer (getf widgets :top-spacer))
+        (search-row (getf widgets :search-row))
+        (search-entry (getf widgets :search-entry))
+        (content-row (getf widgets :content-row))
+        (results-scroller (getf widgets :results-scroller))
+        (results-listbox (getf widgets :results-listbox))
+        (preview-label (getf widgets :preview-label))
+        (bottom-spacer (getf widgets :bottom-spacer))
+        (status-label (getf widgets :status-label))
+        (footer-label (getf widgets :footer-label)))
+    (gtk-box-pack-start root top-spacer :expand t :fill t :padding 0)
+    (gtk-box-pack-start search-row search-entry :expand t :fill t :padding 120)
+    (gtk-box-pack-start root search-row :expand nil :fill t :padding 0)
+    (gtk-container-add results-scroller results-listbox)
+    (gtk-box-pack-start content-row results-scroller :expand t :fill t :padding 0)
+    (gtk-box-pack-start content-row preview-label :expand t :fill t :padding 0)
+    (gtk-box-pack-start root content-row :expand t :fill t :padding 0)
+    (gtk-box-pack-start root bottom-spacer :expand t :fill t :padding 0)
+    (gtk-box-pack-start root status-label :expand nil :fill t :padding 0)
+    (gtk-box-pack-start root footer-label :expand nil :fill t :padding 0)
+    (gtk-container-add window root)
+    (gtk-widget-show-all window)
+    (gtk-widget-grab-focus search-entry)))
+
 (defun run-launcher-window (runtime)
   "Run interactive GTK launcher window loop using RUNTIME option/command APIs."
   (within-main-loop
-    (let* ((window (make-instance 'gtk-window :type :toplevel :title "Altera Launcher - GTK" :default-width 960 :default-height 520))
-           (root (make-instance 'gtk-vbox :homogeneous nil :spacing 10 :border-width 14))
-           (top-spacer (make-instance 'gtk-label :label ""))
-           (search-row (make-instance 'gtk-hbox :homogeneous nil :spacing 12))
-           (search-entry (make-instance 'gtk-entry :text ""))
-           (content-row (make-instance 'gtk-hbox :homogeneous t :spacing 10))
-           (results-scroller (make-instance 'gtk-scrolled-window))
-           (results-listbox (make-instance 'gtk-list-box))
-           (preview-label (gtk-label-new ""))
-           (bottom-spacer (make-instance 'gtk-label :label ""))
-           (status-label (gtk-label-new ""))
-           (footer-label (gtk-label-new ""))
-           (query "")
-           (options (fetch-options runtime ""))
-           (selection-index 0))
-      (labels ((refresh-all ()
-                 (setf selection-index (bounded-index selection-index (length options)))
-                 (refresh-results-listbox options selection-index results-listbox)
-                 (gtk-label-set-text preview-label
-                                     (format-preview-pane (selected-option options selection-index)
-                                                          query
-                                                          selection-index))
-                 (gtk-label-set-text status-label (format-status-rail options selection-index)))
-               (refresh-from-query (next-query)
-                 (setf query next-query
-                       options (fetch-options runtime next-query)
-                       selection-index 0)
-                 (refresh-all))
-               (move-selection (delta)
-                 (setf selection-index (bounded-index (+ selection-index delta) (length options)))
-                 (let ((row (gtk-list-box-get-row-at-index results-listbox selection-index)))
-                   (when row
-                     (gtk-list-box-select-row results-listbox row)))
-                 (refresh-all))
-               (apply-key-action (action)
-                 (case action
-                   (:close-launcher (leave-gtk-main) t)
-                   (:move-next (move-selection 1) t)
-                   (:move-prev (move-selection -1) t)
-                   (:move-top (setf selection-index 0) (refresh-all) t)
-                   (:move-bottom
-                    (setf selection-index (if options (1- (length options)) 0))
-                    (refresh-all)
-                    t)
-                   (:focus-search (gtk-widget-grab-focus search-entry) t)
-                   (:execute-selected
-                    (let ((result (execute-selected-option runtime options selection-index)))
-                      (gtk-label-set-text status-label
-                                          (if (getf result :ok)
-                                              (format nil "Executed: ~A" (or (getf result :title) "item"))
-                                              (format nil "Execution failed: ~A" (or (getf result :error) "unknown"))))
-                      (when (and (getf result :ok)
-                                 (eq (getf (selected-option options selection-index) :kind) :application))
-                        (leave-gtk-main)))
-                    t)
-                   (:open-command-actions
-                    (gtk-label-set-text status-label "Actions panel is not implemented yet.")
-                    t)
-                   (otherwise nil))))
-        (g-signal-connect window "destroy"
-                          (lambda (widget)
-                            (declare (ignore widget))
-                            (leave-gtk-main)))
-
-        (g-signal-connect window "key-press-event"
-                          (lambda (widget event)
-                            (declare (ignore widget))
-                            (let* ((chord (key-event->chord event))
-                                   (action (and chord (resolve-key-action chord (current-keymap-profile)))))
-                              (and action (apply-key-action action)))))
-
-        (g-signal-connect search-entry "key-press-event"
-                          (lambda (widget event)
-                            (declare (ignore widget))
-                            (let* ((chord (key-event->chord event))
-                                   (action (and chord (resolve-key-action chord (current-keymap-profile)))))
-                              (and action (apply-key-action action)))))
-
-        (g-signal-connect search-entry "changed"
-                          (lambda (widget)
-                            (declare (ignore widget))
-                            (refresh-from-query (gtk-entry-text search-entry))))
-
-        (g-signal-connect results-listbox "row-selected"
-                          (lambda (widget row)
-                            (declare (ignore widget))
-                            (when row
-                              (setf selection-index (gtk-list-box-row-get-index row))
-                              (gtk-label-set-text preview-label
-                                                  (format-preview-pane (selected-option options selection-index)
-                                                                       query
-                                                                       selection-index))
-                              (gtk-label-set-text status-label (format-status-rail options selection-index)))))
-
-        (g-signal-connect results-listbox "row-activated"
-                          (lambda (widget row)
-                            (declare (ignore widget))
-                            (when row
-                              (setf selection-index (gtk-list-box-row-get-index row)))
-                            (apply-key-action :execute-selected)))
-
-        (apply-window-style window)
-        (apply-theme-css-provider)
-
-        (gtk-label-set-text footer-label (key-hints-text))
-        (refresh-all)
-
-        (gtk-box-pack-start root top-spacer :expand t :fill t :padding 0)
-        (gtk-box-pack-start search-row search-entry :expand t :fill t :padding 120)
-        (gtk-box-pack-start root search-row :expand nil :fill t :padding 0)
-        (gtk-container-add results-scroller results-listbox)
-        (gtk-box-pack-start content-row results-scroller :expand t :fill t :padding 0)
-        (gtk-box-pack-start content-row preview-label :expand t :fill t :padding 0)
-        (gtk-box-pack-start root content-row :expand t :fill t :padding 0)
-        (gtk-box-pack-start root bottom-spacer :expand t :fill t :padding 0)
-        (gtk-box-pack-start root status-label :expand nil :fill t :padding 0)
-        (gtk-box-pack-start root footer-label :expand nil :fill t :padding 0)
-
-        (gtk-container-add window root)
-        (gtk-widget-show-all window)
-        (gtk-widget-grab-focus search-entry))))
+    (let* ((widgets (make-launcher-widgets))
+           (state (make-launcher-state runtime))
+           (window (getf widgets :window))
+           (footer-label (getf widgets :footer-label)))
+      (connect-launcher-signals state widgets runtime)
+      (apply-window-style window)
+      (apply-theme-css-provider)
+      (gtk-label-set-text footer-label (key-hints-text))
+      (refresh-launcher-view state widgets)
+      (build-launcher-layout widgets)))
   (join-gtk-main))
+
+(setf (fdefinition 'altera-launcher.extensions.ui-gtk::run-launcher-window-dispatch)
+      #'run-launcher-window)

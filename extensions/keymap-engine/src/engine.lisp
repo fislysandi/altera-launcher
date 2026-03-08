@@ -23,57 +23,16 @@
                  ("return" . :execute-selected)
                  ("ctrl+g" . :close-launcher)
                  ("ctrl+s" . :focus-search)
-                 ("ctrl+b" . :open-command-actions)))))
+                 ("ctrl+b" . :open-command-actions))))
   "Built-in key binding sets by profile name.")
-
-(defun default-config-file ()
-  "Return default launcher config pathname used by keymap engine."
-  (merge-pathnames ".config/altera-launcher/config.lisp" (user-homedir-pathname)))
 
 (defun read-launcher-config ()
   "Read launcher config plist, or return empty plist when missing."
-  (let ((config-file (default-config-file)))
-    (if (probe-file config-file)
-        (with-open-file (stream config-file :direction :input)
-          (read stream nil '()))
-        '())))
-
-(defun normalize-chord (chord)
-  "Normalize CHORD to lowercase trimmed string form."
-  (string-downcase (string-trim '(#\Space #\Tab) (string chord))))
-
-(defun normalize-action (action)
-  "Normalize ACTION to a keyword action symbol or NIL."
-  (cond
-    ((keywordp action) action)
-    ((symbolp action) (intern (string-upcase (symbol-name action)) :keyword))
-    ((stringp action) (intern (string-upcase action) :keyword))
-    (t nil)))
-
-(defun parse-override-entry (entry)
-  "Parse one keymap override ENTRY and return (chord . action) or NIL."
-  (cond
-    ((and (consp entry)
-          (stringp (car entry))
-          (or (keywordp (cdr entry))
-              (stringp (cdr entry))
-              (symbolp (cdr entry))))
-     (cons (normalize-chord (car entry)) (normalize-action (cdr entry))))
-    ((and (listp entry)
-          (= (length entry) 2)
-          (stringp (first entry)))
-     (cons (normalize-chord (first entry)) (normalize-action (second entry))))
-    ((and (listp entry)
-          (getf entry :chord)
-          (getf entry :action))
-     (cons (normalize-chord (getf entry :chord))
-           (normalize-action (getf entry :action))))
-    (t nil)))
+  (read-launcher-config-plist))
 
 (defun config-overrides (config)
   "Return normalized keymap override bindings from CONFIG."
-  (let ((overrides (or (getf config :keymap-overrides) '())))
-    (remove nil (mapcar #'parse-override-entry overrides))))
+  (normalize-override-entries (or (getf config :keymap-overrides) '())))
 
 (defun configured-profile (config)
   "Return configured profile name from CONFIG, defaulting to \"vim\"."
@@ -165,9 +124,27 @@
    (lambda (chord &optional profile-name &rest args)
      (declare (ignore args))
      (resolve-key-action chord (or profile-name (current-keymap-profile))))
-   :title "Resolve Key Action"
-   :description "Resolves a key chord like 'ctrl+b' into a launcher action keyword."
-   :tags '("keymap" "engine"))
+    :title "Resolve Key Action"
+    :description "Resolves a key chord like 'ctrl+b' into a launcher action keyword."
+    :tags '("keymap" "engine"))
+
+  (define-command
+   "keymap.override.parse"
+   (lambda (entry &rest args)
+     (declare (ignore args))
+     (parse-override-entry entry))
+   :title "Parse Keymap Override Entry"
+   :description "Parses one override entry into normalized (chord . action) pair or NIL."
+   :tags '("keymap" "diagnostics"))
+
+  (define-command
+   "keymap.overrides.normalize"
+   (lambda (entries &rest args)
+     (declare (ignore args))
+     (normalize-override-entries entries))
+   :title "Normalize Keymap Overrides"
+   :description "Parses a list of override entries and filters invalid entries."
+   :tags '("keymap" "diagnostics"))
 
   (define-command
    "keymap.config.reload"

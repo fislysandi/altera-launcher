@@ -17,61 +17,9 @@
 (defparameter *terminal-selection-index* 0
   "Current selected row index for terminal launcher state.")
 
-(defun string-prefix-p (prefix string)
-  "Return true when STRING starts with PREFIX."
-  (and (<= (length prefix) (length string))
-       (string= prefix string :end2 (length prefix))))
-
-(defun desktop-field (lines prefix)
-  "Return desktop entry field value in LINES matching PREFIX=."
-  (loop for line in lines
-        when (string-prefix-p prefix line)
-          return (subseq line (length prefix))))
-
-(defun placeholder-token-p (token)
-  "Return true when TOKEN is a desktop Exec placeholder such as %U."
-  (and (> (length token) 1)
-       (char= (char token 0) #\%)))
-
-(defun sanitize-desktop-exec (exec)
-  "Remove desktop Exec placeholder tokens from EXEC command string."
-  (let ((tokens (remove-if #'placeholder-token-p (uiop:split-string exec :separator '(#\Space)))))
-    (string-trim '(#\Space #\Tab)
-                 (format nil "~{~A~^ ~}" tokens))))
-
-(defun parse-desktop-entry (path)
-  "Parse one desktop entry file PATH into a launcher catalog item plist or NIL."
-  (let* ((lines (read-file-lines path))
-         (type (desktop-field lines "Type="))
-         (name (desktop-field lines "Name="))
-         (exec (desktop-field lines "Exec="))
-         (hidden (desktop-field lines "Hidden="))
-         (no-display (desktop-field lines "NoDisplay=")))
-    (when (and name
-               exec
-               (or (null type) (string= type "Application"))
-               (not (string= hidden "true"))
-               (not (string= no-display "true")))
-      (list :id (format nil "app.~A" name)
-            :title name
-            :subtitle "Application"
-            :kind :application
-            :exec (sanitize-desktop-exec exec)
-            :desktop-file (namestring path)))))
-
-(defun discover-desktop-entries ()
-  "Discover and parse desktop application entries from user and system paths."
-  (let* ((user-dir (merge-pathnames ".local/share/applications/" (user-homedir-pathname)))
-         (system-dir #p"/usr/share/applications/")
-         (paths (append (when (probe-file user-dir)
-                          (directory (merge-pathnames "*.desktop" user-dir)))
-                        (when (probe-file system-dir)
-                          (directory (merge-pathnames "*.desktop" system-dir))))))
-    (remove nil (mapcar #'parse-desktop-entry paths))))
-
 (defun refresh-catalog ()
   "Refresh terminal catalog by combining builtins and discovered applications."
-  (setf *catalog* (append *builtin-catalog* (discover-desktop-entries))))
+  (setf *catalog* (append *builtin-catalog* (discover-desktop-apps))))
 
 (defun ensure-catalog ()
   "Ensure terminal catalog is populated before querying or selection."
@@ -201,15 +149,7 @@
 
 (defun execute-application-entry (entry)
   "Launch application ENTRY and return execution status plist."
-  (let ((exec (getf entry :exec)))
-    (if (and exec (not (string= exec "")))
-        (progn
-          (launch-program (list "/bin/sh" "-lc" exec)
-                          :output nil
-                          :error-output nil
-                          :wait nil)
-          (list :ok t :kind :application :title (entry-title entry)))
-        (list :ok nil :error "No executable command found" :title (entry-title entry)))))
+  (launch-desktop-app-entry entry))
 
 (defun execute-command-entry (entry)
   "Return placeholder execution status for non-application command ENTRY."

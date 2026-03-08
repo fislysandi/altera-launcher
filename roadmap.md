@@ -8,11 +8,17 @@ Use this as the contributor pick list.
 
 ### Now (highest leverage)
 
+- [x] Harden config/manifest parsing (`*read-eval* nil` + schema checks)
+- [x] Centralize launcher config path/read helpers into shared core module
+- [x] Replace `/bin/sh -lc` app launch path with argv-safe execution
+- [x] Extract shared desktop app catalog module used by `ui-terminal` and `app-scanner`
+- [x] Surface options-source provider errors in diagnostics (no silent swallowing)
 - [ ] Add config schema validation and helpful migration warnings
 - [ ] Add startup diagnostics log file in user config dir
 - [ ] Add extension load timing and failure diagnostics
-- [ ] Add extension discovery/index command with health status
-- [ ] Add extension enable/disable commands without deleting files
+- [x] Add extension discovery/index command with health status
+- [x] Add extension enable/disable commands without deleting files
+- [x] Add config option for extension auto-reload during debugging
 - [ ] Add extension hot-reload command
 - [ ] Promote launcher option item schema into shared contract constants and validators
 - [ ] Split option processing into explicit stages (collect -> normalize -> rank -> dedupe/group)
@@ -21,6 +27,7 @@ Use this as the contributor pick list.
 
 - [ ] Upgrade fuzzy search quality and scoring strategy
 - [ ] Add recency/frequency ranking
+- [ ] Define cross-platform support baseline (Linux, macOS, Windows)
 - [ ] Move remaining GTK adapter labels/hints/defaults into config/theme/layout contracts
 - [ ] Add polished loading/empty/error visual states
 - [ ] Add integration tests for option schema validation and provider edge cases
@@ -38,6 +45,9 @@ Use this as the contributor pick list.
 - [ ] Add desktop entry (`.desktop`) and icon integration
 - [ ] Add release process and versioning strategy
 - [ ] Add install/uninstall docs for Linux distributions
+- [x] Add scripts to build distributable binaries for Linux/macOS/Windows
+- [x] Add GitHub Actions matrix workflow to build all three platforms in parallel
+- [x] Add workflow_dispatch release workflow that publishes cross-platform artifacts
 
 ## Core Architecture
 
@@ -59,6 +69,7 @@ Use this as the contributor pick list.
 - [x] Use default user extension directory `~/.config/altera-launcher/extensions/`
 - [x] Support custom extension path patterns from config
 - [x] Provide one-command startup (`sbcl --script start.lisp`)
+- [x] Harden config/manifest parsing (`*read-eval* nil` + schema checks)
 - [ ] Add config schema validation and helpful migration warnings
 - [ ] Add profile support (`work`, `personal`, `minimal`)
 
@@ -68,9 +79,10 @@ Use this as the contributor pick list.
 - [x] Support manifest-based extension dependency setup
 - [x] Add copyable OCICL extension template
 - [x] Add first options-source extension target: OCICL manager
-- [ ] Add extension metadata conventions (name, version, author, homepage)
-- [ ] Add extension discovery/index command with health status
-- [ ] Add extension enable/disable commands without deleting files
+- [x] Add extension metadata conventions (name, version, author, homepage)
+- [x] Add extension contract validator command (`extensions.contract.validate`)
+- [x] Add extension discovery/index command with health status
+- [x] Add extension enable/disable commands without deleting files
 - [ ] Add extension hot-reload command
 
 ## UI Platform
@@ -100,7 +112,7 @@ Use this as the contributor pick list.
 - [x] Define theme token extension (`ui-theme`)
 - [x] Define renderer contract extension (`ui-renderer`)
 - [ ] Add multiple curated premium presets
-- [ ] Add user theme override file support
+- [x] Add user theme override file support
 - [ ] Add layout presets and per-layout options
 - [ ] Add reduced-motion mode and accessibility presets
 
@@ -111,12 +123,14 @@ Use this as the contributor pick list.
 - [x] Validate startup path without REPL dependency
 - [ ] Add startup diagnostics log file in user config dir
 - [ ] Add extension load timing and failure diagnostics
+- [x] Surface options-source provider errors in diagnostics (no silent swallowing)
 - [ ] Add snapshot tests for UI state contracts
 - [ ] Add integration tests for option schema validation and provider edge cases
 - [ ] Add config migration tests for deprecated/renamed keys
-- [ ] Add keymap override parsing matrix tests
+- [x] Add keymap override parsing matrix tests
 - [ ] Add anti-hardcode review checklist to CI/release gates
 - [ ] Add CI workflow for load/test/lint checks
+- [x] Add CI artifacts upload for Linux/macOS/Windows build outputs
 
 ## Packaging & Distribution
 
@@ -124,7 +138,8 @@ Use this as the contributor pick list.
 - [ ] Add desktop entry (`.desktop`) and icon integration
 - [ ] Add release process and versioning strategy
 - [ ] Add install/uninstall docs for Linux distributions
-- [ ] Evaluate Windows/macOS portability strategy
+- [ ] Make runtime and packaging fully cross-platform (Linux, macOS, Windows)
+- [x] Add one-command build script that compiles launcher for all three platforms
 
 ## Documentation & Developer Experience
 

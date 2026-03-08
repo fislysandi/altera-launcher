@@ -10,7 +10,9 @@
 (defstruct extension-spec
   name
   version
-  description)
+  description
+  author
+  homepage)
 
 (defstruct (extension-loader
             (:constructor make-extension-loader ()))

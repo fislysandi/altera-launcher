@@ -58,8 +58,17 @@ This parser is intentionally minimal and does not handle quoted commas."
 
 (defun read-extensions-manifest (&optional (manifest-path "extensions/extensions-manifest.lisp"))
   "Read and return extension manifest plist from MANIFEST-PATH."
-  (with-open-file (stream manifest-path :direction :input)
-    (read stream nil '())))
+  (flet ((manifest-shaped-p (value)
+           (and (listp value)
+                (evenp (length value))
+                (or (null (getf value :extensions))
+                    (listp (getf value :extensions))))))
+    (with-open-file (stream manifest-path :direction :input)
+      (let ((*read-eval* nil)
+            (form (read stream nil '())))
+        (if (manifest-shaped-p form)
+            form
+            '())))))
 
 (defun manifest-extension-entries (manifest)
   "Return extension entry list from MANIFEST plist."
