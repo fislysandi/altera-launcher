@@ -42,7 +42,7 @@
              list row { padding: 10px 12px; border-radius: 8px; }~%
              list row:selected { background-color: rgba(255,255,255,0.1); border-left: 3px solid ~A; }~%
              label { color: ~A; }~%"
-            bg fg fg primary primary))
+            bg fg fg primary primary)))
 
 (defun write-theme-css-temp-file (css)
   (let* ((base (uiop:ensure-directory-pathname
