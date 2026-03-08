@@ -1,23 +1,36 @@
 (in-package #:altera-launcher.extensions.ui-theme)
 
-(defparameter *theme-presets*
-  '(("atelier-light"
-     :palette (:background "#f4f0e6" :foreground "#1f1a16" :primary "#ca5b2a" :accent "#2f8f7f")
-     :typography (:ui "Space Grotesk" :display "Oxanium" :mono "JetBrains Mono" :scale (:sm 0.875 :md 1.0 :lg 1.25 :xl 1.75))
-     :spacing (:base 4 :scale (:1 4 :2 8 :3 12 :4 16 :6 24 :8 32 :12 48))
-     :motion (:duration-fast 90 :duration-medium 160 :duration-slow 280 :curve "cubic-bezier(0.22,1,0.36,1)"))
-    ("graphite-dark"
-     :palette (:background "#1f252b" :foreground "#f0f4f7" :primary "#5db2a4" :accent "#f08a4b")
-     :typography (:ui "Outfit" :display "Space Grotesk" :mono "IBM Plex Mono" :scale (:sm 0.875 :md 1.0 :lg 1.2 :xl 1.6))
-     :spacing (:base 4 :scale (:1 4 :2 8 :3 12 :4 16 :6 24 :8 32 :12 48))
-     :motion (:duration-fast 80 :duration-medium 150 :duration-slow 260 :curve "cubic-bezier(0.16,1,0.3,1)"))
-    ("neo-brass"
-     :palette (:background "#fff6db" :foreground "#18120d" :primary "#e15c2c" :accent "#6a57d2")
-     :typography (:ui "DM Sans" :display "Oxanium" :mono "Space Mono" :scale (:sm 0.9 :md 1.0 :lg 1.3 :xl 1.8))
-     :spacing (:base 4 :scale (:1 4 :2 8 :3 12 :4 16 :6 24 :8 32 :12 48))
-     :motion (:duration-fast 70 :duration-medium 140 :duration-slow 220 :curve "cubic-bezier(0.2,0.8,0.2,1)"))))
+(defparameter *theme-presets* (make-hash-table :test #'equal))
+(defparameter *themes-loaded-p* nil)
 
 (defparameter *active-theme* "atelier-light")
+
+(defun normalize-theme-name (theme-name)
+  (string-downcase (string theme-name)))
+
+(defun register-theme-preset (theme-name tokens)
+  (setf (gethash (normalize-theme-name theme-name) *theme-presets*)
+        (cons (normalize-theme-name theme-name) tokens)))
+
+(defmacro define-theme (theme-name &rest token-plist)
+  `(register-theme-preset ,theme-name ',token-plist))
+
+(defun themes-root-directory ()
+  (merge-pathnames "themes/" (asdf:system-source-directory :ui-theme)))
+
+(defun discover-theme-files ()
+  (sort (mapcar #'namestring (directory (merge-pathnames "*/*.lisp" (themes-root-directory))))
+        #'string<))
+
+(defun load-theme-files ()
+  (clrhash *theme-presets*)
+  (dolist (file (discover-theme-files))
+    (load file))
+  (setf *themes-loaded-p* t))
+
+(defun ensure-themes-loaded ()
+  (unless *themes-loaded-p*
+    (load-theme-files)))
 
 (defun launcher-config-file ()
   (merge-pathnames ".config/altera-launcher/config.lisp" (user-homedir-pathname)))
@@ -30,6 +43,7 @@
         '())))
 
 (defun apply-theme-from-config ()
+  (ensure-themes-loaded)
   (let* ((config (read-launcher-config))
          (preset (or (getf config :theme-preset)
                      (getf config :theme)
@@ -38,17 +52,20 @@
       (setf *active-theme* preset))))
 
 (defun available-theme-presets ()
-  (mapcar #'first *theme-presets*))
+  (ensure-themes-loaded)
+  (sort (loop for key being the hash-keys of *theme-presets* collect key)
+        #'string<))
 
 (defun find-theme (theme-name)
-  (find theme-name *theme-presets* :key #'first :test #'string=))
+  (ensure-themes-loaded)
+  (gethash (normalize-theme-name theme-name) *theme-presets*))
 
 (defun active-theme-name ()
   *active-theme*)
 
 (defun set-active-theme (theme-name)
   (if (find-theme theme-name)
-      (setf *active-theme* theme-name)
+      (setf *active-theme* (normalize-theme-name theme-name))
       (error "Unknown theme preset: ~A" theme-name)))
 
 (defun active-theme-tokens ()

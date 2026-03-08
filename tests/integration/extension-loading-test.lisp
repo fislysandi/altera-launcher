@@ -6,6 +6,8 @@
          (runtime (bootstrap :extension-paths (list pattern))))
     (ok (listp (run-command runtime "extensions.list")))
     (ok (member "atelier-light" (run-command runtime "ui.theme.presets") :test #'string=))
+    (ok (member "dracula" (run-command runtime "ui.theme.presets") :test #'string=))
+    (ok (member "catppuccin" (run-command runtime "ui.theme.presets") :test #'string=))
     (equal "graphite-dark" (run-command runtime "ui.theme.set" "graphite-dark"))
     (ok (listp (run-command runtime "ui.renderer.contract")))
     (equal "spotlight" (run-command runtime "ui.renderer.layout.set" "spotlight"))
