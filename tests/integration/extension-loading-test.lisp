@@ -40,7 +40,9 @@
       (equal t (getf window-spec :close-on-escape))
       (equal :middle (getf window-spec :search-box-position))
       (equal "vim" (getf window-spec :default-keymap-profile))
-      (equal t (getf window-spec :keymap-customizable)))
+      (equal t (getf window-spec :keymap-customizable))
+      (equal t (getf window-spec :theme-css-bridge))
+      (equal t (getf window-spec :footer-key-hints)))
     (let ((manifest-install (run-command runtime "extensions.manifest.install"
                                          "extensions/extensions-manifest.lisp"
                                          t)))

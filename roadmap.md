@@ -43,7 +43,7 @@ General project goals and progress checklist.
 - [x] Close launcher with `Esc`
 - [x] Implement full keyboard navigation (`Up/Down/Enter`) without button dependency
 - [x] Replace text blob list with proper result row widgets
-- [ ] Add GTK CSS bridge from `ui-theme` tokens
+- [x] Add GTK CSS bridge from `ui-theme` tokens
 - [ ] Add polished loading/empty/error visual states
 
 ## Search & Command UX

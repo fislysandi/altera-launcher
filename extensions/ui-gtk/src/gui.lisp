@@ -61,7 +61,9 @@
         :search-box-position :middle
         :default-keymap-profile "vim"
         :available-keymap-profiles '("vim" "emacs")
-        :keymap-customizable t))
+        :keymap-customizable t
+        :theme-css-bridge t
+        :footer-key-hints t))
 
 (defun launch-gui (&optional runtime)
   (ensure-gtk-runtime)

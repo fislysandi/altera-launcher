@@ -4,7 +4,8 @@
                 #:list-launcher-options
                 #:run-command)
   (:import-from #:altera-launcher.extensions.ui-theme
-                #:active-theme-name)
+                #:active-theme-name
+                #:active-theme-tokens)
   (:import-from #:altera-launcher.extensions.keymap-engine
                 #:resolve-key-action
                 #:current-keymap-profile)
@@ -15,6 +16,54 @@
 (defparameter *control-mask-bit* (ash 1 2))
 (defparameter *mod1-mask-bit* (ash 1 3))
 (defparameter *super-mask-bit* (ash 1 26))
+
+(defun nested-plist-get (plist key)
+  (getf plist key))
+
+(defun theme-color (tokens color-key fallback)
+  (or (getf (nested-plist-get tokens :palette) color-key)
+      fallback))
+
+(defun key-hints-text ()
+  (if (string= (current-keymap-profile) "emacs")
+      "Ctrl+n/p move  Enter launch  Ctrl+b actions  Ctrl+g close"
+      "j/k move  Enter launch  Ctrl+b actions  Esc close"))
+
+(defun build-theme-css ()
+  (let* ((tokens (active-theme-tokens))
+         (bg (theme-color tokens :background "#1f252b"))
+         (fg (theme-color tokens :foreground "#f0f4f7"))
+         (primary (theme-color tokens :primary "#5db2a4"))
+         (accent (theme-color tokens :accent "#f08a4b")))
+    (format nil
+            "window { background-color: ~A; color: ~A; }~%
+             entry { border-radius: 12px; padding: 12px 14px; background-color: rgba(0,0,0,0.15); color: ~A; border: 1px solid rgba(255,255,255,0.12); }~%
+             list { background-color: rgba(0,0,0,0.08); border-radius: 12px; }~%
+             list row { padding: 10px 12px; border-radius: 8px; }~%
+             list row:selected { background-color: rgba(255,255,255,0.1); border-left: 3px solid ~A; }~%
+             label { color: ~A; }~%"
+            bg fg fg primary primary))
+
+(defun write-theme-css-temp-file (css)
+  (let* ((base (uiop:ensure-directory-pathname
+                (merge-pathnames "altera-css/" (uiop:temporary-directory))))
+         (path (merge-pathnames "theme.css" base)))
+    (uiop:ensure-all-directories-exist (list base))
+    (with-open-file (stream path :direction :output :if-exists :supersede :if-does-not-exist :create)
+      (write-string css stream))
+    path))
+
+(defun apply-theme-css-provider ()
+  (let* ((provider (gtk-css-provider-new))
+         (css (build-theme-css))
+         (css-path (write-theme-css-temp-file css))
+         (screen (gdk-screen-get-default)))
+    (gtk-css-provider-load-from-path provider (namestring css-path))
+    (when screen
+      (gtk-style-context-add-provider-for-screen
+       screen
+       provider
+       +gtk-style-provider-priority-application+))))
 
 (defun apply-window-style (window)
   (setf (gtk-window-decorated window) nil)
@@ -136,6 +185,7 @@
            (preview-label (gtk-label-new ""))
            (bottom-spacer (make-instance 'gtk-label :label ""))
            (status-label (gtk-label-new ""))
+           (footer-label (gtk-label-new ""))
            (query "")
            (options (fetch-options runtime ""))
            (selection-index 0))
@@ -223,6 +273,9 @@
                             (apply-key-action :execute-selected)))
 
         (apply-window-style window)
+        (apply-theme-css-provider)
+
+        (gtk-label-set-text footer-label (key-hints-text))
         (refresh-all)
 
         (gtk-box-pack-start root top-spacer :expand t :fill t :padding 0)
@@ -234,6 +287,7 @@
         (gtk-box-pack-start root content-row :expand t :fill t :padding 0)
         (gtk-box-pack-start root bottom-spacer :expand t :fill t :padding 0)
         (gtk-box-pack-start root status-label :expand nil :fill t :padding 0)
+        (gtk-box-pack-start root footer-label :expand nil :fill t :padding 0)
 
         (gtk-container-add window root)
         (gtk-widget-show-all window)
