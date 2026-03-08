@@ -80,9 +80,18 @@ jobs:
           sbcl --non-interactive --script scripts/bootstrap-ocicl-windows.lisp
           if ($LASTEXITCODE -ne 0) { throw "OCICL bootstrap script failed" }
           $ociclExe = "$env:USERPROFILE\AppData\Local\ocicl\bin\ocicl.exe"
-          if (-not (Test-Path $ociclExe)) { throw "Could not locate ocicl.exe at $ociclExe" }
-          "OCICL_EXE=$ociclExe" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          (Split-Path -Parent $ociclExe) | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          $ociclScript = "$env:USERPROFILE\.local\bin\ocicl"
+          if (Test-Path $ociclExe) {
+            "OCICL_MODE=exe" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+            "OCICL_CMD=$ociclExe" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+            (Split-Path -Parent $ociclExe) | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          } elseif (Test-Path $ociclScript) {
+            "OCICL_MODE=script" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+            "OCICL_CMD=$ociclScript" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+            (Split-Path -Parent $ociclScript) | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          } else {
+            throw "Could not locate OCICL command under $env:USERPROFILE"
+          }
 
       - name: Build artifact (Linux/macOS)
         if: runner.os != 'Windows'
@@ -97,7 +106,11 @@ jobs:
         run: |
           New-Item -ItemType Directory -Path dist -Force | Out-Null
           $env:OCICL_LOCAL_ONLY = "1"
-          & "$env:OCICL_EXE" install
+          if ($env:OCICL_MODE -eq "exe") {
+            & "$env:OCICL_CMD" install
+          } else {
+            sbcl --script "$env:OCICL_CMD" install
+          }
           sbcl --script scripts/build-release-image.lisp
 
       - name: Upload artifact
