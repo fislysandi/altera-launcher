@@ -31,7 +31,7 @@ jobs:
           OCICL_LOCAL_ONLY=1 ocicl install rove
 
       - name: Run tests
-        run: sbcl --non-interactive --eval '(require :asdf)' --eval '(asdf:load-asd "${{ github.workspace }}/altera-launcher.asd")' --eval '(asdf:test-system :altera-launcher/tests)'
+        run: rove -r spec tests/main.lisp
 
   build:
     needs: test
