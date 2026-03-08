@@ -76,32 +76,69 @@
         (not (null (search needle subtitle))))))
 
 (defun normalize-option-item (source item)
-  (list :id (or (getf item :id) (getf source :id))
+  (let* ((raw-id (or (getf item :id) (getf source :id)))
+         (normalized-id (normalize-id raw-id)))
+    (list :id normalized-id
         :title (or (getf item :title) "")
         :subtitle (or (getf item :subtitle) "")
         :kind (or (getf item :kind) :command)
         :command (getf item :command)
         :args (or (getf item :args) '())
         :source (getf source :id)
-        :extension (getf source :extension)))
+        :extension (getf source :extension))))
 
-(defun collect-option-items (option-sources &key (query "") source-id limit)
+(defun option-item-valid-p (item)
+  (let ((kind (getf item :kind)))
+    (and (getf item :id)
+         (stringp (getf item :title))
+         (or (eq kind :application)
+             (and (eq kind :command)
+                  (or (null (getf item :command))
+                      (stringp (getf item :command))))))))
+
+(defun provider-option-items (source query context)
+  (let* ((provider (getf source :provider))
+         (result (funcall provider query context))
+         (items (if (and (listp result) (or (null result) (listp (first result))))
+                    result
+                    (list result))))
+    (loop for item in items
+          for normalized = (normalize-option-item source item)
+          when (and (option-item-valid-p normalized)
+                    (option-match-p normalized query))
+            collect normalized)))
+
+(defun dedupe-option-items (items)
+  (let ((seen (make-hash-table :test #'equal)))
+    (loop for item in items
+          for id = (getf item :id)
+          unless (gethash id seen)
+            do (setf (gethash id seen) t)
+               and collect item)))
+
+(defun sort-option-items (items)
+  (sort items
+        (lambda (a b)
+          (let ((title-a (string-downcase (getf a :title)))
+                (title-b (string-downcase (getf b :title))))
+            (or (string< title-a title-b)
+                (and (string= title-a title-b)
+                     (string< (getf a :id) (getf b :id))))))))
+
+(defun collect-option-items (option-sources &key (query "") source-id limit context)
   (let* ((normalized-source-id (and source-id (normalize-id source-id)))
          (collected
            (loop for source being the hash-values of option-sources
                  when (or (null normalized-source-id)
                           (string= normalized-source-id (getf source :id)))
-                   append
-                   (let ((provider (getf source :provider)))
-                     (handler-case
-                         (loop for item in (funcall provider query nil)
-                               for normalized = (normalize-option-item source item)
-                               when (option-match-p normalized query)
-                                 collect normalized)
-                       (error () '()))))))
+                    append
+                    (handler-case
+                        (provider-option-items source query context)
+                      (error () '()))))
+         (stable-items (sort-option-items (dedupe-option-items collected))))
     (if limit
-        (subseq collected 0 (min limit (length collected)))
-        collected)))
+        (subseq stable-items 0 (min limit (length stable-items)))
+        stable-items)))
 
 (defmacro define-extension ((name &key (version "0.1.0") description) &body body)
   `(progn

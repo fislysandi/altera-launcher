@@ -23,6 +23,11 @@
       (ok (some (lambda (item)
                   (string= (getf item :source) "ocicl.manager.options"))
                 options)))
+    (let* ((all-ocicl-options
+             (list-launcher-options runtime :query "" :source-id "ocicl.manager.options" :limit 20))
+           (ids (mapcar (lambda (item) (getf item :id)) all-ocicl-options)))
+      (equal (length ids)
+             (length (remove-duplicates ids :test #'string=))))
     (let ((gui-self-test (run-command runtime "ui.gui.self-test")))
       (equal t (getf gui-self-test :ok))
       (equal t (getf gui-self-test :runner-symbol-present)))

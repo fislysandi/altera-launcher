@@ -83,8 +83,9 @@
            :description (altera-launcher.core.extension-loader:extension-spec-description extension)))
    (list-extensions (getf runtime :loader))))
 
-(defun list-launcher-options (runtime &key (query "") source-id limit)
+(defun list-launcher-options (runtime &key (query "") source-id limit context)
   (collect-option-items (getf runtime :option-sources)
                         :query query
                         :source-id source-id
-                        :limit limit))
+                        :limit limit
+                        :context context))
