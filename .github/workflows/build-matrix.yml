@@ -31,7 +31,13 @@ jobs:
           OCICL_LOCAL_ONLY=1 ocicl install rove
 
       - name: Run tests
-        run: rove -r spec tests/main.lisp
+        shell: bash
+        run: |
+          sbcl --non-interactive \
+            --eval '(require :asdf)' \
+            --eval "(asdf:initialize-source-registry (list :source-registry :inherit-configuration (list :tree \"${GITHUB_WORKSPACE}/ocicl\")))" \
+            --eval "(asdf:load-asd \"${GITHUB_WORKSPACE}/altera-launcher.asd\")" \
+            --eval '(asdf:test-system :altera-launcher/tests)'
 
   build:
     needs: test
