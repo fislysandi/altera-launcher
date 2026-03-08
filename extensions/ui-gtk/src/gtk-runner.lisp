@@ -106,13 +106,35 @@
 (defun result-item-kind-label (entry)
   (string-capitalize (string-downcase (string (or (getf entry :kind) :command)))))
 
+(defun default-icon-name-for-kind (kind)
+  (if (eq kind :application)
+      "application-x-executable"
+      "system-run"))
+
+(defun resolve-icon-widget (entry)
+  (let* ((kind (or (getf entry :kind) :command))
+         (icon (getf entry :icon))
+         (icon-path (and (stringp icon)
+                         (ignore-errors (probe-file icon))))
+         (image (cond
+                  (icon-path
+                   (gtk-image-new-from-file (namestring icon-path)))
+                  ((and (stringp icon) (not (string= icon "")))
+                   (gtk-image-new-from-icon-name icon :dialog))
+                  (t
+                   (gtk-image-new-from-icon-name (default-icon-name-for-kind kind) :dialog)))))
+    (setf (gtk-image-pixel-size image) 22)
+    image))
+
 (defun make-result-row-widget (entry)
   (let* ((row (make-instance 'gtk-list-box-row))
-         (container (make-instance 'gtk-hbox :homogeneous nil :spacing 12))
+          (container (make-instance 'gtk-hbox :homogeneous nil :spacing 12))
+         (icon (resolve-icon-widget entry))
          (text-column (make-instance 'gtk-vbox :homogeneous nil :spacing 2))
          (title (make-instance 'gtk-label :label (or (getf entry :title) "") :xalign 0.0))
          (subtitle (make-instance 'gtk-label :label (or (getf entry :subtitle) "") :xalign 0.0))
          (kind (make-instance 'gtk-label :label (result-item-kind-label entry) :xalign 1.0)))
+    (gtk-box-pack-start container icon :expand nil :fill nil :padding 0)
     (gtk-box-pack-start text-column title :expand t :fill t :padding 0)
     (gtk-box-pack-start text-column subtitle :expand t :fill t :padding 0)
     (gtk-box-pack-start container text-column :expand t :fill t :padding 0)
