@@ -84,12 +84,17 @@
 
 (defun filtered-results (query)
   (ensure-catalog)
-  (loop for item in *catalog*
-        for title = (entry-title item)
-        for subtitle = (entry-subtitle item)
-        when (or (query-match-p title query)
-                 (query-match-p subtitle query))
-          collect item))
+  (let ((seen (make-hash-table :test #'equal)))
+    (loop for item in *catalog*
+          for title = (entry-title item)
+          for subtitle = (entry-subtitle item)
+          for kind = (or (getf item :kind) :unknown)
+          for key = (format nil "~A::~A" kind (string-downcase (or title "")))
+          when (and (or (query-match-p title query)
+                        (query-match-p subtitle query))
+                    (not (gethash key seen)))
+            do (setf (gethash key seen) t)
+            and collect item)))
 
 (defun bounded-index (index length)
   (cond
