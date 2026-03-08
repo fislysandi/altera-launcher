@@ -2,17 +2,21 @@
 
 (define-condition gtk-runtime-missing-error (error)
   ((message :initarg :message :reader gtk-runtime-missing-message))
+  (:documentation "Raised when GTK runtime requirements are unavailable.")
   (:report (lambda (condition stream)
              (format stream "~A" (gtk-runtime-missing-message condition)))))
 
 (defun display-available-p ()
+  "Return non-NIL when DISPLAY or WAYLAND display environment is available."
   (or (uiop:getenv "DISPLAY")
       (uiop:getenv "WAYLAND_DISPLAY")))
 
 (defun project-root ()
+  "Return root directory pathname for altera-launcher system source."
   (asdf:system-source-directory :altera-launcher))
 
 (defun ensure-ocicl-source-registry ()
+  "Ensure OCICL vendored source tree is registered for ASDF lookup."
   (let ((ocicl-root (merge-pathnames "ocicl/" (project-root))))
     (when (probe-file ocicl-root)
       (asdf:initialize-source-registry
@@ -21,6 +25,7 @@
          :inherit-configuration)))))
 
 (defun ensure-gtk-runtime ()
+  "Load GTK runtime dependencies and validate GTK package availability."
   (ensure-ocicl-source-registry)
   (handler-case
       (asdf:load-system "cl-cffi-gtk")
@@ -34,11 +39,13 @@
            :message "GTK package not available after load-system cl-cffi-gtk.")))
 
 (defun ensure-gtk-runner-loaded ()
+  "Load GTK runner implementation file containing run-launcher-window."
   (let ((runner-file (merge-pathnames "src/gtk-runner.lisp"
                                       (asdf:system-source-directory :ui-gtk))))
     (load runner-file)))
 
 (defun gui-preflight-report ()
+  "Return diagnostic plist for GTK runtime, display, and runner availability."
   (handler-case
       (progn
         (ensure-gtk-runtime)
@@ -55,6 +62,7 @@
             :display-available (not (null (display-available-p)))))))
 
 (defun gui-window-spec ()
+  "Return GUI window behavior contract advertised by GTK extension."
   (list :decorated nil
         :window-position :center
         :close-on-escape t
@@ -66,10 +74,12 @@
         :footer-key-hints t))
 
 (defun resolve-runtime (&optional runtime)
+  "Return provided RUNTIME or bootstrap a fresh launcher runtime."
   (or runtime
       (funcall (symbol-function (find-symbol "BOOTSTRAP" "ALTERA-LAUNCHER")))))
 
 (defun launch-gui (&optional runtime)
+  "Launch GTK window using optional RUNTIME and return runner result."
   (ensure-gtk-runtime)
   (ensure-gtk-runner-loaded)
   (funcall (symbol-function

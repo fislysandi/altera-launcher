@@ -31,6 +31,11 @@ Minimal, extension-first launcher written in Common Lisp.
 - `tests/` - rove test suites
 - `docs/architecture.md` - architecture and contracts
 - `docs/anti-hardcode-checklist.md` - contribution checklist for futureproof changes
+- `CONTRIBUTING.md` - contribution rules and PR checklist
+- `docs/contributor-guide.md` - contributor onboarding workflow
+- `docs/extension-authoring-guide.md` - extension implementation guide
+- `docs/troubleshooting.md` - common setup/runtime issues and fixes
+- `docs/hackability-improvements.md` - source-level improvement proposals for contributors
 - `docs/pattern-adaptation-plan.md` - selected source patterns to adapt
 - `docs/pattern-attribution.md` - attribution for adapted ideas
 
@@ -186,6 +191,15 @@ Use `templates/ocicl-extension-template/` as a starter for community extensions.
 2. Rename system/package/command identifiers
 3. Add extension entry to `extensions/extensions-manifest.lisp`
 4. Run `OCICL_LOCAL_ONLY=1 ocicl install`
+
+## Contributing
+
+Start with:
+
+- `CONTRIBUTING.md`
+- `docs/contributor-guide.md`
+- `docs/extension-authoring-guide.md`
+- `docs/troubleshooting.md`
 
 ## License
 

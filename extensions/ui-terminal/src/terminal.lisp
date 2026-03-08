@@ -6,32 +6,41 @@
     (:id "command.kill-process" :title "Kill Process" :subtitle "Process" :kind :command)
     (:id "command.search-video" :title "Search Video" :subtitle "Web" :kind :command)
     (:id "command.sync-deps" :title "Sync Dependencies" :subtitle "Extension" :kind :command)
-    (:id "command.theme-presets" :title "Theme Presets" :subtitle "Customization" :kind :command)))
+    (:id "command.theme-presets" :title "Theme Presets" :subtitle "Customization" :kind :command))
+  "Built-in non-application terminal launcher entries.")
 
-(defparameter *catalog* nil)
+(defparameter *catalog* nil
+  "Cached terminal catalog containing built-ins and discovered apps.")
 
-(defparameter *terminal-query* "")
-(defparameter *terminal-selection-index* 0)
+(defparameter *terminal-query* ""
+  "Current query string for terminal launcher state.")
+(defparameter *terminal-selection-index* 0
+  "Current selected row index for terminal launcher state.")
 
 (defun string-prefix-p (prefix string)
+  "Return true when STRING starts with PREFIX."
   (and (<= (length prefix) (length string))
        (string= prefix string :end2 (length prefix))))
 
 (defun desktop-field (lines prefix)
+  "Return desktop entry field value in LINES matching PREFIX=."
   (loop for line in lines
         when (string-prefix-p prefix line)
           return (subseq line (length prefix))))
 
 (defun placeholder-token-p (token)
+  "Return true when TOKEN is a desktop Exec placeholder such as %U."
   (and (> (length token) 1)
        (char= (char token 0) #\%)))
 
 (defun sanitize-desktop-exec (exec)
+  "Remove desktop Exec placeholder tokens from EXEC command string."
   (let ((tokens (remove-if #'placeholder-token-p (uiop:split-string exec :separator '(#\Space)))))
     (string-trim '(#\Space #\Tab)
                  (format nil "~{~A~^ ~}" tokens))))
 
 (defun parse-desktop-entry (path)
+  "Parse one desktop entry file PATH into a launcher catalog item plist or NIL."
   (let* ((lines (read-file-lines path))
          (type (desktop-field lines "Type="))
          (name (desktop-field lines "Name="))
@@ -51,6 +60,7 @@
             :desktop-file (namestring path)))))
 
 (defun discover-desktop-entries ()
+  "Discover and parse desktop application entries from user and system paths."
   (let* ((user-dir (merge-pathnames ".local/share/applications/" (user-homedir-pathname)))
          (system-dir #p"/usr/share/applications/")
          (paths (append (when (probe-file user-dir)
@@ -60,29 +70,36 @@
     (remove nil (mapcar #'parse-desktop-entry paths))))
 
 (defun refresh-catalog ()
+  "Refresh terminal catalog by combining builtins and discovered applications."
   (setf *catalog* (append *builtin-catalog* (discover-desktop-entries))))
 
 (defun ensure-catalog ()
+  "Ensure terminal catalog is populated before querying or selection."
   (unless *catalog*
     (refresh-catalog)))
 
 (defun entry-title (entry)
+  "Return title string for catalog ENTRY."
   (getf entry :title))
 
 (defun entry-subtitle (entry)
+  "Return subtitle string for catalog ENTRY, defaulting to empty string."
   (or (getf entry :subtitle) ""))
 
 (defun find-entry-by-id (entry-id)
+  "Find catalog entry by ENTRY-ID or return NIL."
   (ensure-catalog)
   (find entry-id *catalog* :key (lambda (entry) (getf entry :id)) :test #'string=))
 
 (defun query-match-p (candidate query)
+  "Return true when CANDIDATE matches QUERY using case-insensitive substring."
   (let ((normalized-candidate (string-downcase candidate))
         (normalized-query (string-downcase query)))
     (or (string= normalized-query "")
         (not (null (search normalized-query normalized-candidate))))))
 
 (defun filtered-results (query)
+  "Return deduplicated catalog results that match QUERY."
   (ensure-catalog)
   (let ((seen (make-hash-table :test #'equal)))
     (loop for item in *catalog*
@@ -97,6 +114,7 @@
             and collect item)))
 
 (defun bounded-index (index length)
+  "Clamp INDEX to valid bounds for sequence of LENGTH."
   (cond
     ((<= length 0) 0)
     ((< index 0) 0)
@@ -104,6 +122,7 @@
     (t index)))
 
 (defun animated-selection (from-index to-index)
+  "Return animation metadata for selection transition FROM-INDEX to TO-INDEX."
   (list :from from-index
         :to to-index
         :frames (list :focus-ring-expand :selection-glide :focus-ring-settle)
@@ -111,6 +130,7 @@
         :curve "cubic-bezier(0.22,1,0.36,1)"))
 
 (defun terminal-surface-state (&key (query *terminal-query*) (selection-index *terminal-selection-index*))
+  "Return terminal surface model for QUERY and SELECTION-INDEX."
   (let* ((results (filtered-results query))
          (safe-index (bounded-index selection-index (length results)))
          (selected-item (nth safe-index results)))
@@ -125,11 +145,13 @@
           :style (active-theme-tokens))))
 
 (defun terminal-search (query)
+  "Set terminal QUERY and reset selection to first result, returning new state."
   (setf *terminal-query* query
         *terminal-selection-index* 0)
   (terminal-surface-state :query *terminal-query* :selection-index *terminal-selection-index*))
 
 (defun terminal-select-next ()
+  "Move terminal selection to next result and return updated animated state."
   (let* ((results (filtered-results *terminal-query*))
          (next-index (bounded-index (1+ *terminal-selection-index*) (length results)))
          (animation (animated-selection *terminal-selection-index* next-index)))
@@ -138,6 +160,7 @@
             (list :selection-animation animation))))
 
 (defun terminal-select-prev ()
+  "Move terminal selection to previous result and return updated animated state."
   (let* ((results (filtered-results *terminal-query*))
          (next-index (bounded-index (1- *terminal-selection-index*) (length results)))
          (animation (animated-selection *terminal-selection-index* next-index)))
@@ -146,12 +169,14 @@
             (list :selection-animation animation))))
 
 (defun terminal-select-first ()
+  "Move terminal selection to first result and return updated animated state."
   (let ((animation (animated-selection *terminal-selection-index* 0)))
     (setf *terminal-selection-index* 0)
     (append (terminal-surface-state :query *terminal-query* :selection-index *terminal-selection-index*)
             (list :selection-animation animation))))
 
 (defun terminal-select-last ()
+  "Move terminal selection to last result and return updated animated state."
   (let* ((results (filtered-results *terminal-query*))
          (last-index (if results (1- (length results)) 0))
          (animation (animated-selection *terminal-selection-index* last-index)))
@@ -160,11 +185,13 @@
             (list :selection-animation animation))))
 
 (defun terminal-selected-item ()
+  "Return currently selected terminal result item or NIL."
   (let* ((results (filtered-results *terminal-query*))
          (safe-index (bounded-index *terminal-selection-index* (length results))))
     (nth safe-index results)))
 
 (defun terminal-select-index (index)
+  "Set terminal selection to INDEX (bounded) and return updated animated state."
   (let* ((results (filtered-results *terminal-query*))
          (next-index (bounded-index index (length results)))
          (animation (animated-selection *terminal-selection-index* next-index)))
@@ -173,6 +200,7 @@
             (list :selection-animation animation))))
 
 (defun execute-application-entry (entry)
+  "Launch application ENTRY and return execution status plist."
   (let ((exec (getf entry :exec)))
     (if (and exec (not (string= exec "")))
         (progn
@@ -184,9 +212,11 @@
         (list :ok nil :error "No executable command found" :title (entry-title entry)))))
 
 (defun execute-command-entry (entry)
+  "Return placeholder execution status for non-application command ENTRY."
   (list :ok t :kind :command :title (entry-title entry) :note "Command execution hook pending"))
 
 (defun terminal-execute-selected ()
+  "Execute currently selected terminal item and return status plist."
   (let ((entry (terminal-selected-item)))
     (cond
       ((null entry) (list :ok nil :error "No selected item"))
@@ -194,6 +224,7 @@
       (t (execute-command-entry entry)))))
 
 (defun terminal-execute-entry-id (entry-id)
+  "Execute terminal catalog entry by ENTRY-ID and return status plist."
   (let ((entry (find-entry-by-id entry-id)))
     (if entry
         (if (eq (getf entry :kind) :application)

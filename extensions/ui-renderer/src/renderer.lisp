@@ -3,11 +3,14 @@
 (defparameter *renderer-layout-hooks*
   '(("compact" :list-width-ratio 0.62 :preview-visible t :status-rail "minimal")
     ("balanced" :list-width-ratio 0.55 :preview-visible t :status-rail "full")
-    ("spotlight" :list-width-ratio 0.75 :preview-visible nil :status-rail "minimal")))
+    ("spotlight" :list-width-ratio 0.75 :preview-visible nil :status-rail "minimal"))
+  "Named layout hook presets exposed by renderer extension.")
 
-(defparameter *active-layout-hook* "balanced")
+(defparameter *active-layout-hook* "balanced"
+  "Currently selected renderer layout hook name.")
 
 (defun renderer-contract ()
+  "Return toolkit-agnostic renderer surface and behavior contract plist."
   '(:surface (:input :results-list :preview-panel :status-rail)
     :style-hooks (:palette :typography :spacing :motion)
     :layout-hooks (:list-width-ratio :preview-visible :status-rail)
@@ -15,17 +18,21 @@
     :responsiveness (:mobile-single-column t :desktop-split-layout t)))
 
 (defun list-layout-hooks ()
+  "Return available renderer layout hook names."
   (mapcar #'first *renderer-layout-hooks*))
 
 (defun find-layout-hook (name)
+  "Find layout hook by NAME and return full hook plist entry or NIL."
   (find name *renderer-layout-hooks* :key #'first :test #'string=))
 
 (defun select-layout-hook (name)
+  "Set active layout hook to NAME and return selected hook name."
   (if (find-layout-hook name)
       (setf *active-layout-hook* name)
       (error "Unknown layout hook: ~A" name)))
 
 (defun render-preview-model (query selected-index)
+  "Build preview model for QUERY and SELECTED-INDEX using active layout."
   (list :surface "launcher-v1"
         :query query
         :selection selected-index

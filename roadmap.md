@@ -2,6 +2,43 @@
 
 General project goals and progress checklist.
 
+## Priority Lanes
+
+Use this as the contributor pick list.
+
+### Now (highest leverage)
+
+- [ ] Add config schema validation and helpful migration warnings
+- [ ] Add startup diagnostics log file in user config dir
+- [ ] Add extension load timing and failure diagnostics
+- [ ] Add extension discovery/index command with health status
+- [ ] Add extension enable/disable commands without deleting files
+- [ ] Add extension hot-reload command
+- [ ] Promote launcher option item schema into shared contract constants and validators
+- [ ] Split option processing into explicit stages (collect -> normalize -> rank -> dedupe/group)
+
+### Next (polish and quality)
+
+- [ ] Upgrade fuzzy search quality and scoring strategy
+- [ ] Add recency/frequency ranking
+- [ ] Move remaining GTK adapter labels/hints/defaults into config/theme/layout contracts
+- [ ] Add polished loading/empty/error visual states
+- [ ] Add integration tests for option schema validation and provider edge cases
+- [ ] Add config migration tests for deprecated/renamed keys
+- [ ] Add keymap override parsing matrix tests
+- [ ] Add anti-hardcode review checklist to CI/release gates
+
+### Later (ecosystem and distribution)
+
+- [ ] Add extension API versioning and compatibility policy
+- [ ] Add safe extension sandbox boundaries and timeout controls
+- [ ] Add extension metadata conventions (name, version, author, homepage)
+- [ ] Add CI workflow for load/test/lint checks
+- [ ] Add executable launcher command wrapper for desktop usage
+- [ ] Add desktop entry (`.desktop`) and icon integration
+- [ ] Add release process and versioning strategy
+- [ ] Add install/uninstall docs for Linux distributions
+
 ## Core Architecture
 
 - [x] Keep core minimal (loader, registry, dispatcher, query, bootstrap)
@@ -12,6 +49,8 @@ General project goals and progress checklist.
 - [ ] Remove remaining toolkit-level hardcoded labels/strings from UI adapters
 - [ ] Add extension API versioning and compatibility policy
 - [x] Add toolkit-agnostic options source API (`define-options-source`)
+- [ ] Promote launcher option item schema into shared contract constants and validators
+- [ ] Split option processing into explicit stages (collect -> normalize -> rank -> dedupe/group)
 - [ ] Add safe extension sandbox boundaries and timeout controls
 
 ## Configuration & Runtime
@@ -45,6 +84,7 @@ General project goals and progress checklist.
 - [x] Replace text blob list with proper result row widgets
 - [x] Add GTK CSS bridge from `ui-theme` tokens
 - [ ] Add polished loading/empty/error visual states
+- [ ] Move remaining GTK adapter labels/hints/defaults into config/theme/layout contracts
 
 ## Search & Command UX
 
@@ -72,6 +112,9 @@ General project goals and progress checklist.
 - [ ] Add startup diagnostics log file in user config dir
 - [ ] Add extension load timing and failure diagnostics
 - [ ] Add snapshot tests for UI state contracts
+- [ ] Add integration tests for option schema validation and provider edge cases
+- [ ] Add config migration tests for deprecated/renamed keys
+- [ ] Add keymap override parsing matrix tests
 - [ ] Add anti-hardcode review checklist to CI/release gates
 - [ ] Add CI workflow for load/test/lint checks
 
@@ -88,8 +131,8 @@ General project goals and progress checklist.
 - [x] Maintain architecture and manifest docs
 - [x] Provide extension template docs
 - [ ] Add end-user quickstart focused on non-REPL usage
-- [ ] Add contributor guide for extension authors
-- [ ] Add troubleshooting guide for GTK/display/runtime issues
+- [x] Add contributor guide for extension authors
+- [x] Add troubleshooting guide for GTK/display/runtime issues
 - [ ] Add roadmap progress updates by milestone
 
 ## Milestones
@@ -112,3 +155,4 @@ General project goals and progress checklist.
 ## Execution Plan Link
 
 - [x] M1 detailed plan: `docs/m1-execution-plan.md`
+- [x] Hackability/flexibility plan: `docs/hackability-improvements.md`

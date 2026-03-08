@@ -1,6 +1,7 @@
 (in-package #:altera-launcher.extensions.ocicl-manager)
 
 (defun string-lines (string)
+  "Split STRING into a list of lines without trailing newline characters."
   (let ((lines '())
         (start 0))
     (loop for end = (position #\Newline string :start start)
@@ -14,6 +15,9 @@
                    (return (nreverse lines)))))))
 
 (defun csv-line->columns (line)
+  "Split one CSV LINE by commas and return column list.
+
+This parser is intentionally minimal and does not handle quoted commas."
   (let ((columns '())
         (start 0))
     (loop for comma = (position #\, line :start start)
@@ -26,18 +30,22 @@
                    (return (nreverse columns)))))))
 
 (defun ocicl-run (&rest args)
+  "Run OCICL with ARGS in local-only mode and return run-program result."
   (run-program (append '("env" "OCICL_LOCAL_ONLY=1" "ocicl") args)
                :output '(:string :stripped t)
                :error-output '(:string :stripped t)
                :ignore-error-status nil))
 
 (defun ocicl-sync ()
+  "Run OCICL install to sync workspace dependencies."
   (ocicl-run "install"))
 
 (defun ocicl-install (project-name)
+  "Install one OCICL PROJECT-NAME dependency."
   (ocicl-run "install" project-name))
 
 (defun ocicl-extension-list ()
+  "Return installed OCICL project names from workspace ocicl.csv."
   (let* ((csv-path (merge-pathnames "ocicl.csv" (getcwd)))
          (exists (probe-file csv-path)))
     (if exists
@@ -49,23 +57,30 @@
         '())))
 
 (defun read-extensions-manifest (&optional (manifest-path "extensions/extensions-manifest.lisp"))
+  "Read and return extension manifest plist from MANIFEST-PATH."
   (with-open-file (stream manifest-path :direction :input)
     (read stream nil '())))
 
 (defun manifest-extension-entries (manifest)
+  "Return extension entry list from MANIFEST plist."
   (or (getf manifest :extensions) '()))
 
 (defun manifest-extension-names (manifest)
+  "Return extension names declared in MANIFEST."
   (mapcar (lambda (entry) (getf entry :name))
           (manifest-extension-entries manifest)))
 
 (defun manifest-ocicl-projects (manifest)
+  "Return unique OCICL project names required by MANIFEST extensions."
   (remove-duplicates
    (loop for entry in (manifest-extension-entries manifest)
          append (or (getf entry :ocicl-projects) '()))
    :test #'string=))
 
 (defun install-from-manifest (&optional (manifest-path "extensions/extensions-manifest.lisp") dry-run)
+  "Install manifest-declared OCICL projects, or return dry-run summary.
+
+When DRY-RUN is true, no installation commands are executed."
   (let* ((manifest (read-extensions-manifest manifest-path))
          (projects (manifest-ocicl-projects manifest)))
     (if dry-run

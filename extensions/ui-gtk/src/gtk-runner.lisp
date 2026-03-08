@@ -13,23 +13,30 @@
 
 (in-package #:altera-launcher.extensions.ui-gtk.runner)
 
-(defparameter *control-mask-bit* (ash 1 2))
-(defparameter *mod1-mask-bit* (ash 1 3))
-(defparameter *super-mask-bit* (ash 1 26))
+(defparameter *control-mask-bit* (ash 1 2)
+  "Bit mask used to detect Ctrl modifier in GTK key event state.")
+(defparameter *mod1-mask-bit* (ash 1 3)
+  "Bit mask used to detect Alt modifier in GTK key event state.")
+(defparameter *super-mask-bit* (ash 1 26)
+  "Bit mask used to detect Super modifier in GTK key event state.")
 
 (defun nested-plist-get (plist key)
+  "Return value for KEY from PLIST."
   (getf plist key))
 
 (defun theme-color (tokens color-key fallback)
+  "Return theme color COLOR-KEY from TOKENS palette or FALLBACK."
   (or (getf (nested-plist-get tokens :palette) color-key)
       fallback))
 
 (defun key-hints-text ()
+  "Return footer key hint text for current keymap profile."
   (if (string= (current-keymap-profile) "emacs")
       "Ctrl+n/p move  Enter launch  Ctrl+b actions  Ctrl+g close"
       "j/k move  Enter launch  Ctrl+b actions  Esc close"))
 
 (defun build-theme-css ()
+  "Build GTK CSS string from active theme tokens."
   (let* ((tokens (active-theme-tokens))
          (bg (theme-color tokens :background "#1f252b"))
          (fg (theme-color tokens :foreground "#f0f4f7"))
@@ -45,6 +52,7 @@
             bg fg fg primary primary)))
 
 (defun write-theme-css-temp-file (css)
+  "Write CSS to a temporary file and return pathname."
   (let* ((base (uiop:ensure-directory-pathname
                 (merge-pathnames "altera-css/" (uiop:temporary-directory))))
          (path (merge-pathnames "theme.css" base)))
@@ -54,6 +62,7 @@
     path))
 
 (defun apply-theme-css-provider ()
+  "Load generated theme CSS and apply it to the default GTK screen."
   (let* ((provider (gtk-css-provider-new))
          (css (build-theme-css))
          (css-path (write-theme-css-temp-file css))
@@ -66,17 +75,20 @@
        +gtk-style-provider-priority-application+))))
 
 (defun apply-window-style (window)
+  "Apply baseline Altera window style to WINDOW."
   (setf (gtk-window-decorated window) nil)
   (setf (gtk-window-resizable window) nil)
   (setf (gtk-window-window-position window) :center))
 
 (defun event-state-has-modifier-p (state modifier-keyword mask-bit)
+  "Return true when STATE indicates MODIFIER-KEYWORD via MASK-BIT."
   (cond
     ((integerp state) (not (zerop (logand state mask-bit))))
     ((listp state) (member modifier-keyword state))
     (t nil)))
 
 (defun event-state->modifiers (state)
+  "Convert GTK key event STATE into sorted modifier name list."
   (let ((modifiers '()))
     (when (event-state-has-modifier-p state :control-mask *control-mask-bit*)
       (push "ctrl" modifiers))
@@ -87,6 +99,7 @@
     (sort modifiers #'string<)))
 
 (defun key-event->chord (event)
+  "Convert GTK key EVENT to normalized chord string like ctrl+b."
   (let* ((key-name (gdk-keyval-name (gdk-event-key-keyval event)))
          (normalized-key (and key-name (string-downcase key-name)))
          (modifiers (event-state->modifiers (gdk-event-key-state event))))
@@ -97,6 +110,7 @@
             normalized-key))))
 
 (defun bounded-index (index length)
+  "Clamp INDEX to valid bounds for sequence of LENGTH."
   (cond
     ((<= length 0) 0)
     ((< index 0) 0)
@@ -104,14 +118,17 @@
     (t index)))
 
 (defun result-item-kind-label (entry)
+  "Return display label for ENTRY kind field."
   (string-capitalize (string-downcase (string (or (getf entry :kind) :command)))))
 
 (defun default-icon-name-for-kind (kind)
+  "Return fallback icon name for option KIND."
   (if (eq kind :application)
       "application-x-executable"
       "system-run"))
 
 (defun resolve-icon-widget (entry)
+  "Create GTK image widget for ENTRY icon metadata with fallback behavior."
   (let* ((kind (or (getf entry :kind) :command))
          (icon (getf entry :icon))
          (icon-path (and (stringp icon)
@@ -127,6 +144,7 @@
     image))
 
 (defun make-result-row-widget (entry)
+  "Build GTK list row widget for launcher option ENTRY."
   (let* ((row (make-instance 'gtk-list-box-row))
           (container (make-instance 'gtk-hbox :homogeneous nil :spacing 12))
          (icon (resolve-icon-widget entry))
@@ -143,11 +161,13 @@
     row))
 
 (defun clear-list-box (list-box)
+  "Destroy all rows currently present in LIST-BOX."
   (loop for row = (gtk-list-box-get-row-at-index list-box 0)
         while row
           do (gtk-widget-destroy row)))
 
 (defun refresh-results-listbox (options selection-index list-box)
+  "Render OPTIONS into LIST-BOX and select row at SELECTION-INDEX."
   (clear-list-box list-box)
   (if (null options)
       (let ((placeholder-row (make-instance 'gtk-list-box-row))
@@ -163,9 +183,11 @@
   (gtk-widget-show-all list-box))
 
 (defun selected-option (options selection-index)
+  "Return selected option from OPTIONS using bounded SELECTION-INDEX."
   (nth (bounded-index selection-index (length options)) options))
 
 (defun format-preview-pane (option query selection-index)
+  "Format preview pane text for OPTION, QUERY, and SELECTION-INDEX."
   (with-output-to-string (stream)
     (format stream "Title: ~A~%" (or (getf option :title) "No selection"))
     (format stream "Kind: ~A~%" (or (getf option :kind) :none))
@@ -175,6 +197,7 @@
     (format stream "Command: ~A~%" (or (getf option :command) "n/a"))))
 
 (defun format-status-rail (options selection-index)
+  "Format status rail text from OPTIONS and SELECTION-INDEX."
   (let ((option (selected-option options selection-index)))
     (format nil "Theme: ~A | Results: ~A | Selected: ~A"
             (active-theme-name)
@@ -182,9 +205,11 @@
             (or (getf option :title) "none"))))
 
 (defun fetch-options (runtime query)
+  "Fetch launcher option items for RUNTIME filtered by QUERY."
   (list-launcher-options runtime :query query :limit 250))
 
 (defun execute-selected-option (runtime options selection-index)
+  "Execute selected option command and return status plist."
   (let ((option (selected-option options selection-index)))
     (if (and option (getf option :command))
         (handler-case
@@ -196,6 +221,7 @@
         (list :ok nil :error "Selected option has no command"))))
 
 (defun run-launcher-window (runtime)
+  "Run interactive GTK launcher window loop using RUNTIME option/command APIs."
   (within-main-loop
     (let* ((window (make-instance 'gtk-window :type :toplevel :title "Altera Launcher - GTK" :default-width 960 :default-height 520))
            (root (make-instance 'gtk-vbox :homogeneous nil :spacing 10 :border-width 14))

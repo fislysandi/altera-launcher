@@ -2,6 +2,7 @@
 
 (define-condition extension-context-error (error)
   ((message :initarg :message :reader extension-context-error-message))
+  (:documentation "Raised when extension registration runs without bootstrap bindings.")
   (:report (lambda (condition stream)
              (format stream "~A" (extension-context-error-message condition)))))
 
@@ -11,6 +12,9 @@
 (defvar *active-extension* nil)
 
 (defun ensure-bootstrap-context ()
+  "Ensure active extension bootstrap dynamic bindings are present.
+
+Signals EXTENSION-CONTEXT-ERROR when called outside extension load context."
   (unless *active-loader*
     (error 'extension-context-error
            :message "No active extension loader is bound."))
@@ -22,9 +26,11 @@
            :message "No active option source registry is bound.")))
 
 (defun normalize-id (name)
+  "Normalize NAME to canonical lowercase identifier string."
   (string-downcase (string name)))
 
 (defun register-extension-definition (name &key version description)
+  "Register extension metadata for NAME in the active loader context."
   (ensure-bootstrap-context)
   (register-extension
    *active-loader*
@@ -33,6 +39,7 @@
                         :description description)))
 
 (defun define-command (name handler &key title description tags)
+  "Register a command in the active registry under the active extension context."
   (ensure-bootstrap-context)
   (register-command
    *active-registry*
@@ -44,6 +51,10 @@
                       :tags tags)))
 
 (defun register-options-source (id provider &key title description tags)
+  "Register PROVIDER as an options source under ID.
+
+Provider receives QUERY and optional CONTEXT, and should return one item plist
+or a list of item plists."
   (ensure-bootstrap-context)
   (let ((normalized-id (normalize-id id)))
     (setf (gethash normalized-id *active-option-sources*)
@@ -55,6 +66,9 @@
                 :provider provider))))
 
 (defmacro define-options-source (id (query-var &optional context-var) &body body)
+  "Define and register an options source provider in extension context.
+
+BODY should return one option plist or a list of option plists."
   (if context-var
       `(register-options-source
         ,id
@@ -68,6 +82,7 @@
           ,@body))))
 
 (defun option-match-p (item query)
+  "Return true when ITEM title or subtitle matches QUERY."
   (let* ((needle (string-downcase (or query "")))
          (title (string-downcase (or (getf item :title) "")))
          (subtitle (string-downcase (or (getf item :subtitle) ""))))
@@ -76,6 +91,7 @@
         (not (null (search needle subtitle))))))
 
 (defun normalize-option-item (source item)
+  "Normalize ITEM emitted by SOURCE to launcher option contract shape."
   (let* ((raw-id (or (getf item :id) (getf source :id)))
          (normalized-id (normalize-id raw-id)))
     (list :id normalized-id
@@ -89,6 +105,7 @@
         :extension (getf source :extension))))
 
 (defun option-item-valid-p (item)
+  "Return true when ITEM satisfies minimum launcher option validity rules."
   (let ((kind (getf item :kind)))
     (and (getf item :id)
          (stringp (getf item :title))
@@ -98,6 +115,7 @@
                       (stringp (getf item :command))))))))
 
 (defun provider-option-items (source query context)
+  "Collect, normalize, and filter option items from one SOURCE provider."
   (let* ((provider (getf source :provider))
          (result (funcall provider query context))
          (items (if (and (listp result) (or (null result) (listp (first result))))
@@ -110,6 +128,7 @@
             collect normalized)))
 
 (defun dedupe-option-items (items)
+  "Remove duplicate option items from ITEMS by normalized :ID."
   (let ((seen (make-hash-table :test #'equal)))
     (loop for item in items
           for id = (getf item :id)
@@ -118,6 +137,7 @@
                and collect item)))
 
 (defun sort-option-items (items)
+  "Sort ITEMS by case-insensitive title, then by id for stable ordering."
   (sort items
         (lambda (a b)
           (let ((title-a (string-downcase (getf a :title)))
@@ -127,6 +147,10 @@
                      (string< (getf a :id) (getf b :id))))))))
 
 (defun collect-option-items (option-sources &key (query "") source-id limit context)
+  "Return normalized launcher options from OPTION-SOURCES.
+
+Aggregates provider results, applies validation/filtering, deduplicates by id,
+sorts output for stable UI consumption, and optionally applies LIMIT."
   (let* ((normalized-source-id (and source-id (normalize-id source-id)))
          (collected
            (loop for source being the hash-values of option-sources
@@ -142,6 +166,7 @@
         stable-items)))
 
 (defmacro define-extension ((name &key (version "0.1.0") description) &body body)
+  "Register extension metadata and evaluate BODY in active extension scope."
   `(progn
      (register-extension-definition ,name
                                     :version ,version
