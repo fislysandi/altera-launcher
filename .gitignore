@@ -4,5 +4,6 @@
 *.x86f
 
 ocicl/
+.tmp/
 
 .DS_Store
