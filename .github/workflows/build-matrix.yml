@@ -26,7 +26,9 @@ jobs:
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       - name: Install test dependencies
-        run: OCICL_LOCAL_ONLY=1 ocicl install
+        run: |
+          OCICL_LOCAL_ONLY=1 ocicl install
+          OCICL_LOCAL_ONLY=1 ocicl install rove
 
       - name: Run tests
         run: sbcl --non-interactive --eval '(require :asdf)' --eval '(asdf:load-asd "${{ github.workspace }}/altera-launcher.asd")' --eval '(asdf:test-system :altera-launcher/tests)'
