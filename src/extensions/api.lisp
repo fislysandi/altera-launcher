@@ -52,6 +52,32 @@ Signals EXTENSION-CONTEXT-ERROR when called outside extension load context."
                       :extension *active-extension*
                       :tags tags)))
 
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (defun lambda-list-symbols (lambda-list)
+    "Return parameter symbols declared in LAMBDA-LIST."
+    (labels ((extract (entry)
+               (cond
+                 ((symbolp entry) (list entry))
+                 ((consp entry) (extract (first entry)))
+                 (t '()))))
+      (loop for entry in lambda-list
+            unless (member entry '(&optional &rest &key &aux &allow-other-keys &whole &body)
+                           :test #'eq)
+              append (extract entry)))))
+
+(defmacro define-simple-command (name lambda-list metadata &body body)
+  "Define and register a command with a simple inline lambda body.
+
+METADATA is a plist supporting :TITLE, :DESCRIPTION, and :TAGS."
+  (let ((symbols (lambda-list-symbols lambda-list)))
+    `(define-command ,name
+       (lambda ,lambda-list
+         (declare (ignorable ,@symbols))
+         ,@body)
+       :title ,(getf metadata :title)
+       :description ,(getf metadata :description)
+       :tags ,(getf metadata :tags))))
+
 (defun register-options-source (id provider &key title description tags)
   "Register PROVIDER as an options source under ID.
 

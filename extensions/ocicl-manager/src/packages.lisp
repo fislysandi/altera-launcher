@@ -3,6 +3,8 @@
   (:import-from #:uiop
                 #:run-program
                 #:getcwd)
+  (:import-from #:altera-launcher.core.config
+                #:define-safe-reader)
   (:export #:ocicl-sync
            #:ocicl-install
            #:ocicl-extension-list

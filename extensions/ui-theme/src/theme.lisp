@@ -101,38 +101,34 @@ User theme files are loaded first and can override bundled themes by name."
                    :description "Theme tokens, typography, spacing, and motion settings")
   (apply-theme-from-config)
 
-  (define-command
+  (define-simple-command
    "ui.theme.presets"
-   (lambda (&rest args)
-     (declare (ignore args))
-     (available-theme-presets))
-   :title "List Theme Presets"
-   :description "Lists available visual theme presets."
-   :tags '("ui" "theme" "customization"))
+   ()
+   (:title "List Theme Presets"
+    :description "Lists available visual theme presets."
+    :tags '("ui" "theme" "customization"))
+   (available-theme-presets))
 
-  (define-command
+  (define-simple-command
    "ui.theme.current"
-   (lambda (&rest args)
-     (declare (ignore args))
-     (active-theme-name))
-   :title "Current Theme"
-   :description "Returns the active theme preset name."
-   :tags '("ui" "theme" "customization"))
+   ()
+   (:title "Current Theme"
+    :description "Returns the active theme preset name."
+    :tags '("ui" "theme" "customization"))
+   (active-theme-name))
 
-  (define-command
+  (define-simple-command
    "ui.theme.set"
-   (lambda (theme-name &rest args)
-     (declare (ignore args))
-     (set-active-theme theme-name))
-   :title "Set Theme"
-   :description "Sets the active theme preset."
-   :tags '("ui" "theme" "customization"))
+   (theme-name)
+   (:title "Set Theme"
+    :description "Sets the active theme preset."
+    :tags '("ui" "theme" "customization"))
+   (set-active-theme theme-name))
 
-  (define-command
+  (define-simple-command
    "ui.theme.tokens"
-   (lambda (&rest args)
-     (declare (ignore args))
-     (active-theme-tokens))
-   :title "Theme Tokens"
-   :description "Returns full token map for the active theme."
-   :tags '("ui" "theme" "customization")))
+   ()
+   (:title "Theme Tokens"
+    :description "Returns full token map for the active theme."
+    :tags '("ui" "theme" "customization"))
+   (active-theme-tokens)))

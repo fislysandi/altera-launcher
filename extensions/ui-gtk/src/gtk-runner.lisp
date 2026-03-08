@@ -1,5 +1,5 @@
 (defpackage #:altera-launcher.extensions.ui-gtk.runner
-  (:use #:cl #:gtk #:gobject #:gdk)
+  (:use #:cl #:gtk #:gobject #:gdk #:gdk-pixbuf)
   (:import-from #:altera-launcher
                 #:list-launcher-options
                 #:run-command)
@@ -19,6 +19,9 @@
   "Bit mask used to detect Alt modifier in GTK key event state.")
 (defparameter *super-mask-bit* (ash 1 26)
   "Bit mask used to detect Super modifier in GTK key event state.")
+
+(defparameter *result-icon-size* 22
+  "Pixel size used for launcher result icons.")
 
 (defun nested-plist-get (plist key)
   "Return value for KEY from PLIST."
@@ -132,15 +135,26 @@
   (let* ((kind (or (getf entry :kind) :command))
          (icon (getf entry :icon))
          (icon-path (and (stringp icon)
-                         (ignore-errors (probe-file icon))))
-         (image (cond
+                          (ignore-errors (probe-file icon))))
+          (image (cond
                   (icon-path
-                   (gtk-image-new-from-file (namestring icon-path)))
-                  ((and (stringp icon) (not (string= icon "")))
-                   (gtk-image-new-from-icon-name icon :dialog))
-                  (t
-                   (gtk-image-new-from-icon-name (default-icon-name-for-kind kind) :dialog)))))
-    (setf (gtk-image-pixel-size image) 22)
+                    (or (ignore-errors
+                          (let* ((pixbuf (gdk-pixbuf-new-from-file (namestring icon-path)))
+                                 (scaled (and pixbuf
+                                              (gdk-pixbuf-scale-simple pixbuf
+                                                                       *result-icon-size*
+                                                                       *result-icon-size*
+                                                                       :bilinear))))
+                            (and scaled (gtk-image-new-from-pixbuf scaled))))
+                        (gtk-image-new-from-file (namestring icon-path))))
+                   ((and (stringp icon) (not (string= icon "")))
+                    (gtk-image-new-from-icon-name icon :dialog))
+                   (t
+                    (gtk-image-new-from-icon-name (default-icon-name-for-kind kind) :dialog)))))
+    (setf (gtk-image-pixel-size image) *result-icon-size*)
+    (ignore-errors
+      (setf (gtk-widget-size-request image)
+            (list *result-icon-size* *result-icon-size*)))
     image))
 
 (defun make-result-row-widget (entry)

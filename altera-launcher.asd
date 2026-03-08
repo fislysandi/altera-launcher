@@ -25,6 +25,7 @@
                (:file "tests/core/extension-loader-test")
                (:file "tests/core/dispatcher-test")
                (:file "tests/core/query-test")
+               (:file "tests/core/config-test")
                (:file "tests/core/options-api-test")
                (:file "tests/core/keymap-overrides-test")
                (:file "tests/integration/extension-loading-test")

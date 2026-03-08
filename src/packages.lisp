@@ -50,9 +50,11 @@
 (defpackage #:altera-launcher.core.config
   (:use #:cl)
   (:export #:launcher-config-root
-           #:launcher-config-file
-           #:read-launcher-config-plist
-           #:write-launcher-config-plist))
+            #:launcher-config-file
+            #:define-safe-reader
+            #:read-safe-form-from-file
+            #:read-launcher-config-plist
+            #:write-launcher-config-plist))
 
 (defpackage #:altera-launcher.core.keymap-overrides
   (:use #:cl)
@@ -78,14 +80,15 @@
   (:import-from #:altera-launcher.core.extension-loader
                 #:make-extension-spec
                 #:register-extension)
-  (:export #:*active-loader*
-           #:*active-registry*
-           #:*active-option-sources*
-           #:define-extension
-           #:define-command
-           #:define-options-source
-           #:collect-option-items
-           #:collect-option-report))
+   (:export #:*active-loader*
+            #:*active-registry*
+            #:*active-option-sources*
+            #:define-extension
+            #:define-command
+            #:define-simple-command
+            #:define-options-source
+            #:collect-option-items
+            #:collect-option-report))
 
 (defpackage #:altera-launcher
   (:use #:cl)

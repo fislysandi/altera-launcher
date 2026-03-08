@@ -46,6 +46,12 @@
   (:import-from #:altera-launcher.extensions.api
                 #:collect-option-report))
 
+(defpackage #:altera-launcher.tests.config
+  (:use #:cl #:rove)
+  (:import-from #:altera-launcher.core.config
+                #:read-launcher-config-plist
+                #:read-safe-form-from-file))
+
 (defpackage #:altera-launcher.tests.keymap-overrides
   (:use #:cl #:rove)
   (:import-from #:altera-launcher.core.keymap-overrides

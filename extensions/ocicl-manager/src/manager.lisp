@@ -56,19 +56,19 @@ This parser is intentionally minimal and does not handle quoted commas."
                  collect (first columns))
         '())))
 
-(defun read-extensions-manifest (&optional (manifest-path "extensions/extensions-manifest.lisp"))
-  "Read and return extension manifest plist from MANIFEST-PATH."
-  (flet ((manifest-shaped-p (value)
-           (and (listp value)
-                (evenp (length value))
-                (or (null (getf value :extensions))
-                    (listp (getf value :extensions))))))
-    (with-open-file (stream manifest-path :direction :input)
-      (let ((*read-eval* nil)
-            (form (read stream nil '())))
-        (if (manifest-shaped-p form)
-            form
-            '())))))
+(defun manifest-shaped-p (value)
+  "Return true when VALUE is a valid extensions manifest plist shape."
+  (and (listp value)
+       (evenp (length value))
+       (or (null (getf value :extensions))
+           (listp (getf value :extensions)))))
+
+(define-safe-reader read-extensions-manifest (manifest-path "extensions/extensions-manifest.lisp")
+  :default '()
+  :validator #'manifest-shaped-p
+  :doc "Read and return extension manifest plist from MANIFEST-PATH.
+
+Malformed, unreadable, or invalid manifest files return an empty plist.")
 
 (defun manifest-extension-entries (manifest)
   "Return extension entry list from MANIFEST plist."
