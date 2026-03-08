@@ -1,7 +1,7 @@
 (asdf:defsystem "ui-terminal"
   :description "Terminal launcher surface consuming ui-theme and ui-renderer contracts"
   :author "altera-launcher contributors"
-  :license "MIT"
+  :license "GPL-3.0-or-later"
   :version "0.1.0"
   :depends-on ("altera-launcher" "ui-theme" "ui-renderer")
   :serial t

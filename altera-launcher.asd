@@ -1,7 +1,7 @@
 (asdf:defsystem "altera-launcher"
   :description "Minimal, extension-first launcher core written in Common Lisp"
   :author "altera-launcher contributors"
-  :license "MIT"
+  :license "GPL-3.0-or-later"
   :version "0.1.0"
   :serial t
   :depends-on ("uiop")
