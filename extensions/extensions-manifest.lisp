@@ -16,6 +16,10 @@
    :system "ui-terminal"
    :asd "extensions/ui-terminal/ui-terminal.asd"
    :ocicl-projects ())
+  (:name "app-scanner"
+   :system "app-scanner"
+   :asd "extensions/app-scanner/app-scanner.asd"
+   :ocicl-projects ())
   (:name "keymap-engine"
    :system "keymap-engine"
    :asd "extensions/keymap-engine/keymap-engine.asd"

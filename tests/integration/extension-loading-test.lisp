@@ -13,6 +13,9 @@
     (ok (listp (getf (run-command runtime "ui.terminal.state") :results-list)))
     (ok (listp (getf (run-command runtime "ui.terminal.search" "open") :results-list)))
     (ok (listp (getf (run-command runtime "ui.terminal.select.next") :selection-animation)))
+    (ok (listp (run-command runtime "apps.scan.list")))
+    (let ((app-options (list-launcher-options runtime :source-id "apps.scanner.options" :limit 5)))
+      (ok (listp app-options)))
     (equal "vim" (run-command runtime "keymap.profile.current"))
     (equal :open-command-actions (run-command runtime "keymap.bindings.resolve" "ctrl+b"))
     (equal :move-next (run-command runtime "keymap.bindings.resolve" "j"))
@@ -44,7 +47,7 @@
       (equal t (getf manifest-install :dry-run))
       (ok (member "ui-theme" (getf manifest-install :extensions) :test #'string=)))
     (ok (>= (length (list-available-commands runtime "ui.gui")) 1))
-    (equal 6 (length (list-available-extensions runtime)))))
+    (equal 7 (length (list-available-extensions runtime)))))
 
 (deftest bootstrap-creates-default-user-config-layout
   (let* ((base (uiop:ensure-directory-pathname

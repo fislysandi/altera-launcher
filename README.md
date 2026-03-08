@@ -12,6 +12,7 @@ Minimal, extension-first launcher written in Common Lisp.
 - UI theme extension with palette/typography/spacing/motion tokens
 - UI renderer extension with layout hooks and launcher surface contract
 - UI terminal extension with search box, result list, preview pane, and animated selection model
+- App scanner extension for installed desktop applications
 - UI GTK extension for a desktop launcher window
 - Keymap engine extension with Vim default and Emacs optional profile
 - Toolkit-agnostic options source API for cross-toolkit extension compatibility
