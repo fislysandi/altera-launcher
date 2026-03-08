@@ -225,7 +225,10 @@
                       (gtk-label-set-text status-label
                                           (if (getf result :ok)
                                               (format nil "Executed: ~A" (or (getf result :title) "item"))
-                                              (format nil "Execution failed: ~A" (or (getf result :error) "unknown")))))
+                                              (format nil "Execution failed: ~A" (or (getf result :error) "unknown"))))
+                      (when (and (getf result :ok)
+                                 (eq (getf (selected-option options selection-index) :kind) :application))
+                        (leave-gtk-main)))
                     t)
                    (:open-command-actions
                     (gtk-label-set-text status-label "Actions panel is not implemented yet.")
