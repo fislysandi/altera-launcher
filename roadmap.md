@@ -22,6 +22,9 @@ Use this as the contributor pick list.
 - [ ] Add extension hot-reload command
 - [ ] Promote launcher option item schema into shared contract constants and validators
 - [ ] Split option processing into explicit stages (collect -> normalize -> rank -> dedupe/group)
+- [ ] Add extension discovery cache with file-hash invalidation for cold startup
+- [ ] Add dedicated fast-start executable/core path for production startup benchmarking
+- [ ] Split GTK startup into prewarmed sidecar or delayed worker init to target <=500ms cold path
 
 ### Next (polish and quality)
 
