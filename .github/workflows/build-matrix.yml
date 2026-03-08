@@ -94,7 +94,7 @@ jobs:
         run: |
           New-Item -ItemType Directory -Path dist -Force | Out-Null
           $env:OCICL_LOCAL_ONLY = "1"
-          ocicl install
+          & "$env:USERPROFILE\AppData\Local\ocicl\ocicl.exe" install
           sbcl --script scripts/build-release-image.lisp
 
       - name: Upload artifact
