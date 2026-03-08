@@ -58,6 +58,11 @@
                 #:parse-override-entry
                 #:normalize-override-entries))
 
+(defpackage #:altera-launcher.tests.perf
+  (:use #:cl #:rove)
+  (:import-from #:asdf
+                #:system-source-directory))
+
 (defpackage #:altera-launcher.tests.integration
   (:use #:cl #:rove)
   (:import-from #:altera-launcher
