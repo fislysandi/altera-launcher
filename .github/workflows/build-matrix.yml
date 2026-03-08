@@ -74,12 +74,8 @@ jobs:
         run: |
           Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
           Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression
-          scoop install sbcl git
-          git clone https://github.com/ocicl/ocicl.git "$env:TEMP\ocicl"
-          Push-Location "$env:TEMP\ocicl"
-          sbcl --non-interactive --load setup.lisp
-          Pop-Location
-          "$env:USERPROFILE\AppData\Local\ocicl" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          scoop install sbcl ocicl git
+          "$env:USERPROFILE\scoop\shims" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
       - name: Build artifact (Linux/macOS)
         if: runner.os != 'Windows'
