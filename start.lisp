@@ -41,7 +41,7 @@
         (t
          (format t "[altera] launching GTK GUI...~%")
          (handler-case
-             (funcall run-command-fn *altera-runtime* "ui.gui.launch")
+             (funcall run-command-fn *altera-runtime* "ui.gui.launch" *altera-runtime*)
            (error (condition)
              (format t "[altera] failed to launch GUI: ~A~%" condition)))))))
   (values))

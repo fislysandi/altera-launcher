@@ -72,6 +72,10 @@
 (defun entry-subtitle (entry)
   (or (getf entry :subtitle) ""))
 
+(defun find-entry-by-id (entry-id)
+  (ensure-catalog)
+  (find entry-id *catalog* :key (lambda (entry) (getf entry :id)) :test #'string=))
+
 (defun query-match-p (candidate query)
   (let ((normalized-candidate (string-downcase candidate))
         (normalized-query (string-downcase query)))
@@ -184,6 +188,14 @@
       ((eq (getf entry :kind) :application) (execute-application-entry entry))
       (t (execute-command-entry entry)))))
 
+(defun terminal-execute-entry-id (entry-id)
+  (let ((entry (find-entry-by-id entry-id)))
+    (if entry
+        (if (eq (getf entry :kind) :application)
+            (execute-application-entry entry)
+            (execute-command-entry entry))
+        (list :ok nil :error (format nil "Unknown entry id: ~A" entry-id)))))
+
 (define-extension ("ui-terminal"
                    :version "0.1.0"
                    :description "Terminal UI surface using ui-theme and ui-renderer contracts")
@@ -266,4 +278,22 @@
      (terminal-execute-selected))
    :title "Terminal Execute Selected"
    :description "Executes selected item (launches app entries immediately)."
-   :tags '("ui" "terminal" "execute")))
+   :tags '("ui" "terminal" "execute"))
+
+  (define-command
+   "ui.terminal.execute.entry"
+   (lambda (entry-id &rest args)
+     (declare (ignore args))
+     (terminal-execute-entry-id entry-id))
+   :title "Terminal Execute Entry"
+   :description "Executes terminal catalog entry by id."
+   :tags '("ui" "terminal" "execute"))
+
+  (define-options-source "ui.terminal.options" (query)
+    (loop for entry in (filtered-results query)
+          collect (list :id (getf entry :id)
+                        :title (getf entry :title)
+                        :subtitle (getf entry :subtitle)
+                        :kind (getf entry :kind)
+                        :command "ui.terminal.execute.entry"
+                        :args (list (getf entry :id))))))

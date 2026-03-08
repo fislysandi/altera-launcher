@@ -63,11 +63,14 @@
         :available-keymap-profiles '("vim" "emacs")
         :keymap-customizable t))
 
-(defun launch-gui ()
+(defun launch-gui (&optional runtime)
   (ensure-gtk-runtime)
   (ensure-gtk-runner-loaded)
+  (unless runtime
+    (error "UI GTK launch requires runtime argument for unified options pipeline."))
   (funcall (symbol-function
-            (find-symbol "RUN-LAUNCHER-WINDOW" "ALTERA-LAUNCHER.EXTENSIONS.UI-GTK.RUNNER"))))
+            (find-symbol "RUN-LAUNCHER-WINDOW" "ALTERA-LAUNCHER.EXTENSIONS.UI-GTK.RUNNER"))
+           runtime))
 
 (define-extension ("ui-gtk"
                    :version "0.1.0"
@@ -92,9 +95,9 @@
 
   (define-command
    "ui.gui.launch"
-   (lambda (&rest args)
+   (lambda (&optional runtime &rest args)
      (declare (ignore args))
-     (launch-gui)
+     (launch-gui runtime)
      :ok)
    :title "Launch GTK GUI"
    :description "Opens the Altera GTK launcher window with search, results, and preview."
