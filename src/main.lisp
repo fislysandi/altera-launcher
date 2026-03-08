@@ -23,6 +23,8 @@
                               :if-does-not-exist :create)
         (write `(:version "1"
                  :extension-paths (,(default-extension-pattern config-root))
+                 :keymap-profile "vim"
+                 :keymap-overrides ()
                  :notes "Default Altera Launcher config.")
                :stream stream
                :pretty t)))))
@@ -40,9 +42,10 @@
 (defun register-extension-system-definition (extension-entry)
   (asdf:load-asd (getf extension-entry :asd-file)))
 
-(defun load-extension-system (loader registry extension-entry)
+(defun load-extension-system (loader registry option-sources extension-entry)
   (let ((altera-launcher.extensions.api:*active-loader* loader)
-        (altera-launcher.extensions.api:*active-registry* registry))
+        (altera-launcher.extensions.api:*active-registry* registry)
+        (altera-launcher.extensions.api:*active-option-sources* option-sources))
     (let ((system-name (getf extension-entry :system-name)))
       (let ((system (asdf:find-system system-name nil)))
         (unless (and system (asdf:component-loaded-p system))
@@ -51,6 +54,7 @@
 (defun bootstrap (&key extension-paths (config-root (default-config-root)))
   (let ((registry (make-command-registry))
         (loader (make-extension-loader))
+        (option-sources (make-hash-table :test #'equal))
         (paths (or extension-paths
                    (progn
                      (ensure-default-config-layout config-root)
@@ -59,10 +63,11 @@
       (dolist (entry entries)
         (register-extension-system-definition entry))
       (dolist (entry entries)
-      (load-extension-system loader registry entry))
+      (load-extension-system loader registry option-sources entry))
       )
     (list :registry registry
-          :loader loader)))
+          :loader loader
+          :option-sources option-sources)))
 
 (defun run-command (runtime command-name &rest args)
   (apply #'dispatch-command (getf runtime :registry) command-name args))
@@ -77,3 +82,9 @@
            :version (altera-launcher.core.extension-loader:extension-spec-version extension)
            :description (altera-launcher.core.extension-loader:extension-spec-description extension)))
    (list-extensions (getf runtime :loader))))
+
+(defun list-launcher-options (runtime &key (query "") source-id limit)
+  (collect-option-items (getf runtime :option-sources)
+                        :query query
+                        :source-id source-id
+                        :limit limit))

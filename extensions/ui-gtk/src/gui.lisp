@@ -58,7 +58,10 @@
   (list :decorated nil
         :window-position :center
         :close-on-escape t
-        :search-box-position :middle))
+        :search-box-position :middle
+        :default-keymap-profile "vim"
+        :available-keymap-profiles '("vim" "emacs")
+        :keymap-customizable t))
 
 (defun launch-gui ()
   (ensure-gtk-runtime)

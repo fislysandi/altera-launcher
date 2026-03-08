@@ -131,4 +131,30 @@
      (install-from-manifest (or manifest-path "extensions/extensions-manifest.lisp") dry-run))
    :title "Install Manifest Dependencies"
    :description "Installs all OCICL projects declared in extension manifest."
-   :tags '("extensions" "ocicl" "manifest" "deps")))
+   :tags '("extensions" "ocicl" "manifest" "deps"))
+
+  (define-options-source "ocicl.manager.options" (query)
+    (let* ((needle (string-downcase (or query "")))
+           (core-options
+             (list (list :id "ocicl.sync"
+                         :title "Sync Dependencies"
+                         :subtitle "OCICL"
+                         :kind :command
+                         :command "extensions.sync")
+                   (list :id "ocicl.manifest.install"
+                         :title "Install Manifest Dependencies"
+                         :subtitle "OCICL"
+                         :kind :command
+                         :command "extensions.manifest.install"
+                         :args (list "extensions/extensions-manifest.lisp" nil))))
+           (project-options
+             (loop for project in (ocicl-extension-list)
+                   when (or (string= needle "")
+                            (search needle (string-downcase project)))
+                     collect (list :id (format nil "ocicl.install.~A" project)
+                                   :title (format nil "Install ~A" project)
+                                   :subtitle "OCICL Project"
+                                   :kind :command
+                                   :command "extensions.install"
+                                   :args (list project)))))
+      (append core-options project-options))))

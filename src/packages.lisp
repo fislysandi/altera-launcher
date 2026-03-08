@@ -55,8 +55,11 @@
                 #:register-extension)
   (:export #:*active-loader*
            #:*active-registry*
+           #:*active-option-sources*
            #:define-extension
-           #:define-command))
+           #:define-command
+           #:define-options-source
+           #:collect-option-items))
 
 (defpackage #:altera-launcher
   (:use #:cl)
@@ -72,8 +75,11 @@
                 #:search-commands)
   (:import-from #:altera-launcher.extensions.api
                 #:*active-loader*
-                #:*active-registry*)
+                #:*active-registry*
+                #:*active-option-sources*
+                #:collect-option-items)
   (:export #:bootstrap
            #:run-command
            #:list-available-commands
-           #:list-available-extensions))
+           #:list-available-extensions
+           #:list-launcher-options))

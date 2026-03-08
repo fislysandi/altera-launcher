@@ -9,6 +9,7 @@ General project goals and progress checklist.
 - [x] Support extension projects as independent ASDF systems
 - [x] Add duplicate/unknown command error conditions
 - [ ] Add extension API versioning and compatibility policy
+- [x] Add toolkit-agnostic options source API (`define-options-source`)
 - [ ] Add safe extension sandbox boundaries and timeout controls
 
 ## Configuration & Runtime
@@ -25,6 +26,7 @@ General project goals and progress checklist.
 - [x] Provide OCICL manager extension for dependency install/sync
 - [x] Support manifest-based extension dependency setup
 - [x] Add copyable OCICL extension template
+- [x] Add first options-source extension target: OCICL manager
 - [ ] Add extension metadata conventions (name, version, author, homepage)
 - [ ] Add extension discovery/index command with health status
 - [ ] Add extension enable/disable commands without deleting files
@@ -37,8 +39,8 @@ General project goals and progress checklist.
 - [x] Make launcher window undecorated
 - [x] Center input area in launcher window
 - [x] Close launcher with `Esc`
-- [ ] Implement full keyboard navigation (`Up/Down/Enter`) without button dependency
-- [ ] Replace text blob list with proper result row widgets
+- [x] Implement full keyboard navigation (`Up/Down/Enter`) without button dependency
+- [x] Replace text blob list with proper result row widgets
 - [ ] Add GTK CSS bridge from `ui-theme` tokens
 - [ ] Add polished loading/empty/error visual states
 

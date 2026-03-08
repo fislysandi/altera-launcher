@@ -13,6 +13,16 @@
     (ok (listp (getf (run-command runtime "ui.terminal.state") :results-list)))
     (ok (listp (getf (run-command runtime "ui.terminal.search" "open") :results-list)))
     (ok (listp (getf (run-command runtime "ui.terminal.select.next") :selection-animation)))
+    (equal "vim" (run-command runtime "keymap.profile.current"))
+    (equal :open-command-actions (run-command runtime "keymap.bindings.resolve" "ctrl+b"))
+    (equal :move-next (run-command runtime "keymap.bindings.resolve" "j"))
+    (equal "emacs" (run-command runtime "keymap.profile.set" "emacs"))
+    (equal :move-next (run-command runtime "keymap.bindings.resolve" "ctrl+n"))
+    (let ((options (list-launcher-options runtime :query "sync")))
+      (ok (plusp (length options)))
+      (ok (some (lambda (item)
+                  (string= (getf item :source) "ocicl.manager.options"))
+                options)))
     (let ((gui-self-test (run-command runtime "ui.gui.self-test")))
       (equal t (getf gui-self-test :ok))
       (equal t (getf gui-self-test :runner-symbol-present)))
@@ -20,14 +30,16 @@
       (equal nil (getf window-spec :decorated))
       (equal :center (getf window-spec :window-position))
       (equal t (getf window-spec :close-on-escape))
-      (equal :middle (getf window-spec :search-box-position)))
+      (equal :middle (getf window-spec :search-box-position))
+      (equal "vim" (getf window-spec :default-keymap-profile))
+      (equal t (getf window-spec :keymap-customizable)))
     (let ((manifest-install (run-command runtime "extensions.manifest.install"
                                          "extensions/extensions-manifest.lisp"
                                          t)))
       (equal t (getf manifest-install :dry-run))
       (ok (member "ui-theme" (getf manifest-install :extensions) :test #'string=)))
     (ok (>= (length (list-available-commands runtime "ui.gui")) 1))
-    (equal 5 (length (list-available-extensions runtime)))))
+    (equal 6 (length (list-available-extensions runtime)))))
 
 (deftest bootstrap-creates-default-user-config-layout
   (let* ((base (uiop:ensure-directory-pathname

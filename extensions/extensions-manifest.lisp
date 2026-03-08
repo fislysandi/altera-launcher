@@ -16,6 +16,10 @@
    :system "ui-terminal"
    :asd "extensions/ui-terminal/ui-terminal.asd"
    :ocicl-projects ())
+  (:name "keymap-engine"
+   :system "keymap-engine"
+   :asd "extensions/keymap-engine/keymap-engine.asd"
+   :ocicl-projects ())
   (:name "ui-gtk"
    :system "ui-gtk"
    :asd "extensions/ui-gtk/ui-gtk.asd"

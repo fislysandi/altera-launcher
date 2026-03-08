@@ -47,7 +47,8 @@
                 #:bootstrap
                 #:run-command
                 #:list-available-commands
-                #:list-available-extensions)
+                #:list-available-extensions
+                #:list-launcher-options)
   (:import-from #:asdf
                 #:system-source-directory))
 

@@ -13,6 +13,8 @@ Minimal, extension-first launcher written in Common Lisp.
 - UI renderer extension with layout hooks and launcher surface contract
 - UI terminal extension with search box, result list, preview pane, and animated selection model
 - UI GTK extension for a desktop launcher window
+- Keymap engine extension with Vim default and Emacs optional profile
+- Toolkit-agnostic options source API for cross-toolkit extension compatibility
 - GTK launcher window behavior: undecorated, centered input, `Esc` closes
 - Deterministic command lookup and dispatch
 - Test coverage for core and extension loading
@@ -36,6 +38,11 @@ On first bootstrap without explicit `:extension-paths`, Altera creates:
 
 - `~/.config/altera-launcher/config.lisp`
 - `~/.config/altera-launcher/extensions/` (default extension install directory)
+
+Keymap defaults in `config.lisp`:
+
+- `:keymap-profile "vim"` (default)
+- `:keymap-overrides ()` for custom chord-to-action mappings
 
 This keeps user-installed extensions separate from repo-local development extensions.
 
@@ -110,6 +117,26 @@ Inside your extension source, use the extension API:
 ```
 
 The core should not change when adding new feature behavior.
+
+## Toolkit-Agnostic Options API
+
+Extensions can define launcher option providers once and keep compatibility across GTK, terminal, and future UI toolkits.
+
+```lisp
+(define-options-source "my-extension.options" (query)
+  (declare (ignore query))
+  (list (list :id "my.action"
+              :title "Run My Action"
+              :subtitle "My Extension"
+              :kind :command
+              :command "my.action")))
+```
+
+Runtime consumers can query normalized options through:
+
+```lisp
+(altera-launcher:list-launcher-options *runtime* :query "sync")
+```
 
 ## Manifest-Based Setup
 
