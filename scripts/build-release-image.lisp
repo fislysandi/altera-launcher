@@ -38,13 +38,16 @@
     (format t "[build] writing executable: ~A~%" (namestring output))
     (sb-ext:save-lisp-and-die (namestring output)
                               :toplevel (lambda ()
-                                          (let ((runtime (altera-launcher:bootstrap)))
+                                          (let* ((bootstrap (symbol-function (find-symbol "BOOTSTRAP" "ALTERA-LAUNCHER")))
+                                                 (run-command (symbol-function (find-symbol "RUN-COMMAND" "ALTERA-LAUNCHER")))
+                                                 (list-commands (symbol-function (find-symbol "LIST-AVAILABLE-COMMANDS" "ALTERA-LAUNCHER")))
+                                                 (runtime (funcall bootstrap)))
                                             (handler-case
-                                                (altera-launcher:run-command runtime "ui.gui.launch")
+                                                (funcall run-command runtime "ui.gui.launch")
                                               (error (condition)
                                                 (format t "[build] ui.gui.launch failed: ~A~%" condition)
                                                 (format t "[build] commands: ~D~%"
-                                                        (length (altera-launcher:list-available-commands runtime "")))))))
+                                                        (length (funcall list-commands runtime "")))))))
                               :executable t
                               :compression t)))
 
