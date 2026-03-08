@@ -63,7 +63,9 @@ jobs:
         shell: bash
         run: |
           git clone https://github.com/ocicl/ocicl.git "$RUNNER_TEMP/ocicl"
-          sbcl --non-interactive --load "$RUNNER_TEMP/ocicl/setup.lisp"
+          pushd "$RUNNER_TEMP/ocicl"
+          sbcl --non-interactive --load setup.lisp
+          popd
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       - name: Install SBCL (Windows)
