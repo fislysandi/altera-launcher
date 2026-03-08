@@ -34,6 +34,9 @@ dissect, ghcr.io/ocicl/dissect@sha256:167cc73b3049d658ef65ebc8bdd76f9ef1c232c426
 global-vars, ghcr.io/ocicl/global-vars@sha256:d197e871c9c9abc4bf31b1186f5fd28f0ca848ebe2e9dddf2d82ecee01dbdc65, global-vars-20240503-c749f32/global-vars.asd
 global-vars-test, ghcr.io/ocicl/global-vars@sha256:d197e871c9c9abc4bf31b1186f5fd28f0ca848ebe2e9dddf2d82ecee01dbdc65, global-vars-20240503-c749f32/global-vars-test.asd
 iterate, ghcr.io/ocicl/iterate@sha256:6950c55e3782d58cabbbb5753111a70d8cafab8348b7fd6f2143d9abeaab46fb, iterate-20250703-d27d7ff/iterate.asd
+lparallel, ghcr.io/ocicl/lparallel@sha256:4b9e626031904279f7f2b53b3ca52f380642cb5402390e478fe1f535f0829379, lparallel-20240503-9c11f40/lparallel.asd
+lparallel-bench, ghcr.io/ocicl/lparallel@sha256:4b9e626031904279f7f2b53b3ca52f380642cb5402390e478fe1f535f0829379, lparallel-20240503-9c11f40/lparallel-bench.asd
+lparallel-test, ghcr.io/ocicl/lparallel@sha256:4b9e626031904279f7f2b53b3ca52f380642cb5402390e478fe1f535f0829379, lparallel-20240503-9c11f40/lparallel-test.asd
 rove, ghcr.io/ocicl/rove@sha256:be975657fe7e70f5f0a519912b8a78850fed76c1b93971bba162ddb569e98da6, rove-20251004-1a44749/rove.asd
 trivial-features, ghcr.io/ocicl/trivial-features@sha256:e278e24d39060fc7d3715531b16ddd9ab7f93f22ade53e436c0b86dbae3aa065, trivial-features-1.0/trivial-features.asd
 trivial-features-tests, ghcr.io/ocicl/trivial-features@sha256:e278e24d39060fc7d3715531b16ddd9ab7f93f22ade53e436c0b86dbae3aa065, trivial-features-1.0/trivial-features-tests.asd

@@ -114,4 +114,5 @@
             #:list-available-extensions
             #:list-launcher-options
             #:list-launcher-option-report
-            #:list-extension-contract-report))
+            #:list-extension-contract-report
+            #:list-startup-profile))

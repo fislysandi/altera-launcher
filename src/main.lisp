@@ -3,6 +3,25 @@
 (defvar *active-runtime* nil
   "Dynamically bound runtime during command dispatch.")
 
+(defun now-ms ()
+  "Return current runtime clock value in milliseconds."
+  (* 1000.0
+     (/ (get-internal-real-time)
+        internal-time-units-per-second)))
+
+(defun measure-ms (thunk)
+  "Execute THUNK and return two values: result and elapsed milliseconds."
+  (let ((start (now-ms)))
+    (values (funcall thunk)
+            (- (now-ms) start))))
+
+(defun append-startup-phase (profile phase elapsed-ms &key details)
+  "Append startup PHASE timing to PROFILE and return updated profile."
+  (append profile
+          (list (append (list :phase phase
+                              :ms elapsed-ms)
+                        details))))
+
 (defun require-active-runtime ()
   "Return active runtime bound for command dispatch or signal an error."
   (or *active-runtime*
@@ -126,15 +145,70 @@ MODE must be :ENABLE or :DISABLE."
   "Return fresh runtime state loaded from extension ENTRIES at CONFIG-ROOT."
   (let ((registry (make-command-registry))
         (loader (make-extension-loader))
-        (option-sources (make-hash-table :test #'equal)))
-    (dolist (entry entries)
-      (register-extension-system-definition entry))
-    (dolist (entry entries)
-      (load-extension-system loader registry option-sources entry :force-reload force-reload))
-    (register-runtime-diagnostics-commands loader registry option-sources config-root)
+        (option-sources (make-hash-table :test #'equal))
+        (profile '()))
+    (multiple-value-bind (_ elapsed-ms)
+        (measure-ms (lambda ()
+                      (dolist (entry entries)
+                        (register-extension-system-definition entry))))
+      (declare (ignore _))
+      (setf profile (append-startup-phase profile
+                                          :register-extension-system-definitions
+                                          elapsed-ms
+                                          :details (list :count (length entries)))))
+    (multiple-value-bind (_ elapsed-ms)
+        (measure-ms (lambda ()
+                      (dolist (entry entries)
+                        (load-extension-system loader
+                                               registry
+                                               option-sources
+                                               entry
+                                               :force-reload force-reload))))
+      (declare (ignore _))
+      (setf profile (append-startup-phase profile
+                                          :load-extension-systems
+                                          elapsed-ms
+                                          :details (list :count (length entries)))))
+    (multiple-value-bind (_ elapsed-ms)
+        (measure-ms (lambda ()
+                      (register-runtime-diagnostics-commands loader registry option-sources config-root)))
+      (declare (ignore _))
+      (setf profile (append-startup-phase profile
+                                          :register-runtime-diagnostics-commands
+                                          elapsed-ms)))
     (list :registry registry
           :loader loader
-          :option-sources option-sources)))
+          :option-sources option-sources
+          :startup-profile profile
+          :pending-extension-entries '())))
+
+(defun runtime-state-lazy-from-extensions (entries config-root)
+  "Return fresh runtime state with extension ENTRIES deferred for lazy loading."
+  (let ((registry (make-command-registry))
+        (loader (make-extension-loader))
+        (option-sources (make-hash-table :test #'equal))
+        (profile '()))
+    (multiple-value-bind (_ elapsed-ms)
+        (measure-ms (lambda ()
+                      (dolist (entry entries)
+                        (register-extension-system-definition entry))))
+      (declare (ignore _))
+      (setf profile (append-startup-phase profile
+                                          :register-extension-system-definitions
+                                          elapsed-ms
+                                          :details (list :count (length entries)))))
+    (multiple-value-bind (_ elapsed-ms)
+        (measure-ms (lambda ()
+                      (register-runtime-diagnostics-commands loader registry option-sources config-root)))
+      (declare (ignore _))
+      (setf profile (append-startup-phase profile
+                                          :register-runtime-diagnostics-commands
+                                          elapsed-ms)))
+    (list :registry registry
+          :loader loader
+          :option-sources option-sources
+          :startup-profile profile
+          :pending-extension-entries entries)))
 
 (defun rebuild-runtime-state (runtime &key force-reload)
   "Rebuild RUNTIME state by reloading configured extension entries.
@@ -153,7 +227,28 @@ When FORCE-RELOAD is true, extension systems are loaded with ASDF force mode."
                                                :force-reload force-reload)))
     (setf (getf runtime :registry) (getf fresh :registry)
           (getf runtime :loader) (getf fresh :loader)
-          (getf runtime :option-sources) (getf fresh :option-sources))))
+          (getf runtime :option-sources) (getf fresh :option-sources)
+          (getf runtime :pending-extension-entries) (getf fresh :pending-extension-entries))))
+
+(defun load-pending-extensions (runtime)
+  "Load pending extension entries for RUNTIME and clear pending state."
+  (let ((pending (copy-list (getf runtime :pending-extension-entries))))
+    (when pending
+      (multiple-value-bind (_ elapsed-ms)
+          (measure-ms (lambda ()
+                        (dolist (entry pending)
+                          (load-extension-system (getf runtime :loader)
+                                                 (getf runtime :registry)
+                                                 (getf runtime :option-sources)
+                                                 entry))))
+        (declare (ignore _))
+        (setf (getf runtime :startup-profile)
+              (append-startup-phase (or (getf runtime :startup-profile) '())
+                                    :lazy-load-pending-extensions
+                                    elapsed-ms
+                                    :details (list :count (length pending)))))
+      (setf (getf runtime :pending-extension-entries) '()))
+    runtime))
 
 (defun maybe-auto-reload-runtime (runtime)
   "Reload runtime extension state when auto reload is enabled in config."
@@ -373,36 +468,86 @@ These commands validate extension contracts and provider health at runtime."
                (declare (ignore args))
                (reload-runtime-on-demand extension-name))
     :title "Reload Extensions"
-    :description "Reloads extension runtime state on demand."
+     :description "Reloads extension runtime state on demand."
+     :extension "altera-core"
+     :tags '("extensions" "diagnostics" "reload")))
+  (altera-launcher.core.command-registry:register-command
+   registry
+   (altera-launcher.core.command-registry:make-command-spec
+    :name "startup.profile"
+    :handler (lambda (&rest args)
+               (declare (ignore args))
+               (or (getf (require-active-runtime) :startup-profile)
+                   '()))
+    :title "Startup Profile"
+    :description "Returns startup timing profile phases for the active runtime."
     :extension "altera-core"
-    :tags '("extensions" "diagnostics" "reload"))))
+    :tags '("diagnostics" "startup" "performance"))))
 
-(defun bootstrap (&key extension-paths (config-root (default-config-root)))
+(defun bootstrap (&key extension-paths (config-root (default-config-root)) (lazy-load-extensions t))
   "Create and initialize a launcher runtime.
 
 When EXTENSION-PATHS is not provided, bootstrap loads patterns from
 the user config under CONFIG-ROOT and creates default config layout when needed.
 Returns a plist containing runtime registries and loader state."
-  (let ((paths (or extension-paths
-                   (progn
-                     (ensure-default-config-layout config-root)
-                     (resolve-extension-paths config-root)))))
+  (let ((profile '())
+        (paths nil))
+    (if extension-paths
+        (setf paths extension-paths)
+        (progn
+          (multiple-value-bind (_ elapsed-ms)
+              (measure-ms (lambda () (ensure-default-config-layout config-root)))
+            (declare (ignore _))
+            (setf profile (append-startup-phase profile :ensure-default-config-layout elapsed-ms)))
+          (multiple-value-bind (resolved elapsed-ms)
+              (measure-ms (lambda () (resolve-extension-paths config-root)))
+            (setf paths resolved)
+            (setf profile (append-startup-phase profile :resolve-extension-paths elapsed-ms)))))
     (let* ((filters (and (null extension-paths)
-                         (resolve-extension-filters config-root)))
-            (entries (if filters
-                         (filter-extension-entries (discover-extension-systems paths) filters)
-                         (discover-extension-systems paths))))
-      (append (runtime-state-from-extensions entries config-root)
-              (list :config-root config-root
+                         (multiple-value-bind (resolved elapsed-ms)
+                             (measure-ms (lambda () (resolve-extension-filters config-root)))
+                           (setf profile (append-startup-phase profile :resolve-extension-filters elapsed-ms))
+                           resolved)))
+           (discovered (multiple-value-bind (items elapsed-ms)
+                           (measure-ms (lambda () (discover-extension-systems paths)))
+                         (setf profile (append-startup-phase profile
+                                                             :discover-extension-systems
+                                                             elapsed-ms
+                                                             :details (list :count (length items))))
+                         items))
+           (entries (if filters
+                        (multiple-value-bind (filtered elapsed-ms)
+                            (measure-ms (lambda () (filter-extension-entries discovered filters)))
+                          (setf profile (append-startup-phase profile
+                                                              :filter-extension-entries
+                                                              elapsed-ms
+                                                              :details (list :count (length filtered))))
+                          filtered)
+                        discovered))
+           (state (if lazy-load-extensions
+                      (runtime-state-lazy-from-extensions entries config-root)
+                      (runtime-state-from-extensions entries config-root))))
+      (setf profile (append profile (or (getf state :startup-profile) '())))
+      (append (list :startup-profile profile
+                    :config-root config-root
                     :extension-paths paths
                     :extension-paths-explicit (not (null extension-paths))
-                    :extensions-auto-reload (extensions-auto-reload-enabled-p config-root))))))
+                    :lazy-load-extensions lazy-load-extensions
+                    :extensions-auto-reload (extensions-auto-reload-enabled-p config-root))
+              state))))
 
 (defun run-command (runtime command-name &rest args)
   "Run COMMAND-NAME in RUNTIME with ARGS and return command result."
   (with-runtime-state (runtime)
     (let ((*active-runtime* runtime))
-      (apply #'dispatch-command (getf runtime :registry) command-name args))))
+      (handler-case
+          (apply #'dispatch-command (getf runtime :registry) command-name args)
+        (altera-launcher.core.dispatcher:unknown-command-error (condition)
+          (if (getf runtime :pending-extension-entries)
+              (progn
+                (load-pending-extensions runtime)
+                (apply #'dispatch-command (getf runtime :registry) command-name args))
+              (error condition)))))))
 
 (defun list-available-commands (runtime &optional (query ""))
   "Return command metadata visible in RUNTIME, filtered by QUERY."
@@ -451,3 +596,8 @@ The result is a plist with :ITEMS and :ERRORS."
                                (getf runtime :registry)
                                (getf runtime :option-sources)
                                :query query)))
+
+(defun list-startup-profile (runtime)
+  "Return startup timing profile entries for RUNTIME."
+  (with-runtime-state (runtime)
+    (copy-list (or (getf runtime :startup-profile) '()))))
